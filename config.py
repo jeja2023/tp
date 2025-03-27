@@ -2,7 +2,7 @@ import os
 import re
 from typing import Optional, List
 from pydantic_settings import BaseSettings
-from pydantic import field_validator, ConfigDict
+from pydantic import field_validator, ConfigDict, Field
 from dotenv import load_dotenv
 import secrets
 
@@ -47,7 +47,7 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
     
     # CORS配置
-    CORS_ORIGINS: List[str] = ["*"]  # 默认允许所有来源
+    CORS_ORIGINS: List[str] = Field(default=["*"], exclude=True)  # 默认允许所有来源，禁用环境变量解析
     
     # 文件存储配置
     UPLOAD_DIR: str = os.getenv("UPLOAD_DIR", "uploads")
