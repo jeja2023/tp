@@ -48,8 +48,7 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
     
     # CORS配置
-    CORS_ORIGINS: List[str] = []
-    CORS_ORIGIN: Optional[str] = os.getenv("CORS_ORIGIN")
+    CORS_ORIGINS: List[str] = ["*"]  # 默认允许所有来源
     
     # 文件存储配置
     UPLOAD_DIR: str = os.getenv("UPLOAD_DIR", "uploads")
@@ -87,28 +86,6 @@ class Settings(BaseSettings):
         if len(v) < 32:
             raise ValueError("SECRET_KEY must be at least 32 characters long")
         return v
-    
-    @field_validator("CORS_ORIGINS")
-    @classmethod
-    def parse_cors_origins(cls, v, info):
-        cors_origins_env = os.getenv("CORS_ORIGINS")
-        if not cors_origins_env:
-            # 默认值
-            return ["http://localhost:8000"]
-            
-        # 尝试解析为JSON
-        if cors_origins_env.startswith("[") and cors_origins_env.endswith("]"):
-            try:
-                return json.loads(cors_origins_env)
-            except json.JSONDecodeError:
-                pass
-                
-        # 如果是 "*"，返回通配符
-        if cors_origins_env == "*":
-            return ["*"]
-            
-        # 尝试解析为逗号分隔的字符串
-        return [origin.strip() for origin in cors_origins_env.split(",") if origin.strip()]
     
     @field_validator("ADMIN_PASSWORD")
     @classmethod
