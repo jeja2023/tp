@@ -15,7 +15,13 @@ class Settings(BaseSettings):
     model_config = ConfigDict(
         env_file=".env",
         case_sensitive=True,
-        validate_default=True
+        validate_default=True,
+        json_schema_extra={
+            "CORS_ORIGINS": {
+                "env": "CORS_ORIGINS",
+                "default": ["*"]
+            }
+        }
     )
     
     # 应用信息
