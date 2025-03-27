@@ -34,9 +34,12 @@ ENV/
 .DS_Store
 
 # 项目特定
-uploads/
-outputs/
-logs/
+uploads/*
+!uploads/.gitkeep
+outputs/*
+!outputs/.gitkeep
+logs/*
+!logs/.gitkeep
 *.log
 .env
 .env.local
