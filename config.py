@@ -1,6 +1,5 @@
 import os
 import re
-import json
 from typing import Optional, List
 from pydantic_settings import BaseSettings
 from pydantic import field_validator, ConfigDict
@@ -15,13 +14,7 @@ class Settings(BaseSettings):
     model_config = ConfigDict(
         env_file=".env",
         case_sensitive=True,
-        validate_default=True,
-        json_schema_extra={
-            "CORS_ORIGINS": {
-                "env": "CORS_ORIGINS",
-                "default": ["*"]
-            }
-        }
+        validate_default=True
     )
     
     # 应用信息
