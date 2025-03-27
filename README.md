@@ -1,16 +1,17 @@
 # 在线图片管理系统
 
-基于FastAPI和原生JavaScript构建的图片管理系统，用于管理、展示和生成轨迹报告。
+基于FastAPI和原生JavaScript构建的在线图片管理系统，专为地理信息与轨迹数据分析设计，用于管理、展示和生成轨迹报告。
 
 ## 项目概述
 
-本系统是一个轻量级的图片管理工具，主要功能包括：
+本系统是一个轻量级但功能完善的在线图片管理工具，主要功能包括：
 
-- 用户注册与登录管理
-- 任务创建与管理
-- 图片上传与管理
-- GPS轨迹记录与地图展示
-- 轨迹报告生成（Excel和Word格式）
+- 用户注册与登录管理，多级权限控制
+- 任务创建与管理，支持团队协作
+- 图片上传与管理，支持批量操作
+- GPS轨迹记录与高德地图可视化展示
+- 轨迹报告自动生成（支持Excel和Word格式）
+- 响应式设计，支持移动设备访问
 
 ## 技术栈
 
@@ -18,7 +19,8 @@
 - **数据库**：MySQL 5.7+ / 8.0
 - **前端**：原生JavaScript、HTML5、CSS3
 - **地图服务**：高德地图API
-- **文档生成**：python-docx, pandas
+- **文档生成**：python-docx, pandas, openpyxl
+- **认证**：JWT认证，密码加密存储
 
 ## 项目结构
 
@@ -73,13 +75,14 @@
 - Python 3.8+
 - MySQL 5.7+ 或 8.0+
 - 现代浏览器（Chrome, Firefox, Edge等）
+- 高德地图开发者账号（用于获取API密钥）
 
 ## 快速开始
 
 ### 1. 克隆项目
 
 ```bash
-git clone https://github.com/yourusername/tp.git
+git clone https://github.com/jeja2023/tp.git
 cd tp
 ```
 
@@ -123,32 +126,32 @@ python main.py
 
 访问 http://localhost:8000 开始使用
 
-## 主要功能
+## 主要功能与界面
 
 ### 1. 用户管理
 - 用户注册和登录
-- 角色权限控制
+- 角色权限控制（管理员、普通用户）
 - 个人信息管理
 
 ### 2. 任务管理
 - 创建和管理任务
 - 任务状态跟踪
-- 任务详情查看
+- 任务详情查看与分享
 
 ### 3. 图片管理
 - 图片上传和预览
 - 图片分类管理
-- 图片信息编辑
+- 图片信息编辑与地理位置标记
 
 ### 4. GPS轨迹
 - GPS数据导入（支持Excel格式）
-- 轨迹地图显示
-- 轨迹数据编辑
+- 轨迹地图可视化显示
+- 轨迹数据分析与编辑
 
 ### 5. 报告生成
 - 支持Excel格式导出
 - 支持Word格式导出
-- 自定义报告模板
+- 自定义报告模板与内容
 
 ## 开发指南
 
@@ -248,12 +251,21 @@ docker run -d --name tp-app \
 - 确认文件大小限制
 - 验证文件类型限制
 
+## 贡献指南
+
+欢迎贡献代码、报告问题或提出改进建议：
+1. Fork 项目
+2. 创建特性分支 (`git checkout -b feature/amazing-feature`)
+3. 提交更改 (`git commit -m 'Add some amazing feature'`)
+4. 推送到分支 (`git push origin feature/amazing-feature`)
+5. 创建Pull Request
+
 ## 许可证
 
 MIT License
 
 ## 联系方式
 
-- 项目维护者：[您的名字]
-- 邮箱：[您的邮箱]
-- 项目主页：[GitHub仓库地址]
+- 项目维护者：[jeja2023](https://github.com/jeja2023)
+- 项目仓库：[https://github.com/jeja2023/tp](https://github.com/jeja2023/tp)
+- 问题反馈：请在GitHub仓库中提交Issue
