@@ -18,8 +18,8 @@ class Settings(BaseSettings):
     )
     
     # 应用信息
-    PROJECT_NAME: str = os.getenv("PROJECT_NAME", "在线图片管理系统")
-    PROJECT_DESCRIPTION: str = os.getenv("PROJECT_DESCRIPTION", "在线图片管理与轨迹记录系统")
+    PROJECT_NAME: str = os.getenv("PROJECT_NAME", "图片管理系统")
+    PROJECT_DESCRIPTION: str = os.getenv("PROJECT_DESCRIPTION", "图片管理与轨迹记录系统")
     PROJECT_VERSION: str = os.getenv("PROJECT_VERSION", "1.0.0")
     
     # 环境设置
