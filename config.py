@@ -1,68 +1,73 @@
 import os
 import re
+import secrets
+import logging
 from typing import Optional, List
 from pydantic_settings import BaseSettings
 from pydantic import field_validator, ConfigDict, Field
 from dotenv import load_dotenv
-import secrets
 
 # 加载.env文件中的环境变量
 load_dotenv()
 
+# 配置日志
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 class Settings(BaseSettings):
     """应用配置类"""
     model_config = ConfigDict(
-        env_file=".env",
-        case_sensitive=True,
-        validate_default=True
+        env_file=".env",  # 指定.env文件路径
+        case_sensitive=True,  # 启用大小写敏感
+        validate_default=True  # 验证默认值
     )
     
     # 应用信息
-    PROJECT_NAME: str = os.getenv("PROJECT_NAME", "图片管理系统")
-    PROJECT_DESCRIPTION: str = os.getenv("PROJECT_DESCRIPTION", "图片管理与轨迹记录系统")
-    PROJECT_VERSION: str = os.getenv("PROJECT_VERSION", "1.0.0")
+    PROJECT_NAME: str = Field(default="图片管理系统", env="PROJECT_NAME")
+    PROJECT_DESCRIPTION: str = Field(default="图片管理与轨迹记录系统", env="PROJECT_DESCRIPTION")
+    PROJECT_VERSION: str = Field(default="1.0.0", env="PROJECT_VERSION")
     
     # 环境设置
-    ENVIRONMENT: str = os.getenv("ENVIRONMENT", "development")
+    ENVIRONMENT: str = Field(default="development", env="ENVIRONMENT")
     IS_PRODUCTION: bool = ENVIRONMENT == "production"
-    DEBUG: bool = os.getenv("DEBUG", "true").lower() == "true"
+    DEBUG: bool = Field(default=True, env="DEBUG")
     
     # 服务器设置
-    HOST: str = os.getenv("HOST", "0.0.0.0")
-    PORT: int = int(os.getenv("PORT", "8000"))
+    HOST: str = Field(default="0.0.0.0", env="HOST")
+    PORT: int = Field(default=8000, env="PORT")
     
     # 数据库连接信息
-    MYSQL_USER: str = os.getenv("MYSQL_USER", "")
-    MYSQL_PASSWORD: str = os.getenv("MYSQL_PASSWORD", "")
-    MYSQL_HOST: str = os.getenv("MYSQL_HOST", "localhost")
-    MYSQL_PORT: str = os.getenv("MYSQL_PORT", "3306")
-    MYSQL_DB: str = os.getenv("MYSQL_DB", "tp_database")
+    MYSQL_USER: str = Field(default="", env="MYSQL_USER")
+    MYSQL_PASSWORD: str = Field(default="", env="MYSQL_PASSWORD")
+    MYSQL_HOST: str = Field(default="localhost", env="MYSQL_HOST")
+    MYSQL_PORT: str = Field(default="3306", env="MYSQL_PORT")
+    MYSQL_DB: str = Field(default="tp_database", env="MYSQL_DB")
     
     # 数据库URL
-    DB_URL: str = f"mysql+mysqlconnector://{MYSQL_USER}:{MYSQL_PASSWORD}@{MYSQL_HOST}:{MYSQL_PORT}/{MYSQL_DB}"
+    DB_URL: str = Field(default="", env="DB_URL")
     
     # 安全设置
-    SECRET_KEY: str = os.getenv("SECRET_KEY", secrets.token_urlsafe(32))
-    ALGORITHM: str = os.getenv("ALGORITHM", "HS256")
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
+    SECRET_KEY: str = Field(default_factory=lambda: secrets.token_urlsafe(32), env="SECRET_KEY")
+    ALGORITHM: str = Field(default="HS256", env="ALGORITHM")
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(default=30, env="ACCESS_TOKEN_EXPIRE_MINUTES")
     
     # CORS配置
-    CORS_ORIGINS: List[str] = Field(default=["*"], exclude=True)  # 默认允许所有来源，禁用环境变量解析
+    CORS_ORIGINS: List[str] = Field(default=["*"], env="CORS_ORIGINS")
     
     # 文件存储配置
-    UPLOAD_DIR: str = os.getenv("UPLOAD_DIR", "uploads")
-    OUTPUT_DIR: str = os.getenv("OUTPUT_DIR", "outputs")
-    LOG_DIR: str = os.getenv("LOG_DIR", "logs")
-    LOG_FILE: str = os.getenv("LOG_FILE", "logs/app.log")
+    UPLOAD_DIR: str = Field(default="uploads", env="UPLOAD_DIR")
+    OUTPUT_DIR: str = Field(default="outputs", env="OUTPUT_DIR")
+    LOG_DIR: str = Field(default="logs", env="LOG_DIR")
+    LOG_FILE: str = Field(default="logs/app.log", env="LOG_FILE")
     
     # 高德地图API配置
-    AMAP_API_KEY: str = os.getenv("AMAP_API_KEY", "")
+    AMAP_API_KEY: str = Field(default="", env="AMAP_API_KEY")
     
     # 管理员账户设置
-    ADMIN_USERNAME: str = os.getenv("ADMIN_USERNAME", "admin")
-    ADMIN_PASSWORD: Optional[str] = os.getenv("ADMIN_PASSWORD")
-    ADMIN_COMPANY: str = os.getenv("ADMIN_COMPANY", "系统管理员")
-    ADMIN_PHONE: str = os.getenv("ADMIN_PHONE", "13800138000")
+    ADMIN_USERNAME: str = Field(default="admin", env="ADMIN_USERNAME")
+    ADMIN_PASSWORD: Optional[str] = Field(default=None, env="ADMIN_PASSWORD")
+    ADMIN_COMPANY: str = Field(default="系统管理员", env="ADMIN_COMPANY")
+    ADMIN_PHONE: str = Field(default="13800138000", env="ADMIN_PHONE")
     
     # 验证器
     @field_validator("ENVIRONMENT")
@@ -121,9 +126,10 @@ class Settings(BaseSettings):
         for directory in [self.UPLOAD_DIR, self.OUTPUT_DIR, self.LOG_DIR]:
             if not os.path.exists(directory):
                 os.makedirs(directory, exist_ok=True)
+                logger.info(f"Created directory: {directory}")
 
 # 创建全局设置实例
 settings = Settings()
 
 # 确保必要的目录存在
-settings.create_directories() 
+settings.create_directories()
