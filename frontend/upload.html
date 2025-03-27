@@ -1,0 +1,2538 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>上传图片 - 图片管理系统</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+    <!-- 添加Font Awesome图标库 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <!-- 添加XLSX库 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script>
+        // 从URL获取任务ID
+        const urlParams = new URLSearchParams(window.location.search);
+        const taskId = urlParams.get('id');
+    </script>
+    <!-- 移除地图相关脚本 -->
+    <script src="/static/js/utils.js"></script>
+    <style>
+    </style>
+    <style>
+        /* 添加新的布局样式 */
+        .page-container {
+            display: flex;
+            gap: 20px;
+            padding: 20px;
+            margin-top: 60px; /* 添加上边距以避免被固定导航栏遮挡 */
+        }
+        
+        /* 返回主页按钮样式 */
+        .back-home-btn {
+            padding: 6px 12px;
+            border: 1px solid #3498db;
+            border-radius: 4px;
+            background: transparent;
+            color: #3498db;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .back-home-btn:hover {
+            background: #3498db;
+            color: white;
+        }
+        
+        .task-info-sidebar {
+            width: 300px;
+            flex-shrink: 0;
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .task-info-sidebar h2 {
+            margin-top: 0;
+            color: #2c3e50;
+        }
+        
+        .task-info-sidebar p {
+            color: #666;
+            margin: 10px 0;
+        }
+        
+        .task-meta {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #eee;
+            font-size: 14px;
+            color: #666;
+        }
+        
+        .task-meta p {
+            margin: 5px 0;
+        }
+        
+        /* 添加任务操作按钮样式 */
+        .task-actions {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .task-actions .btn {
+            width: 100%;
+            padding: 10px;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        
+        .task-actions .btn i {
+            font-size: 16px;
+        }
+        
+        .main-content {
+            flex-grow: 1;
+        }
+        
+        /* 修改现有样式 */
+        .task-header {
+            margin-bottom: 20px;
+        }
+        
+        .task-header h2 {
+            margin: 0;
+        }
+        
+        .task-header p {
+            margin: 5px 0;
+        }
+        
+        #back-to-tasks-btn {
+            margin-bottom: 15px;
+            width: 100%;
+        }
+        
+        /* 修改上传区域布局 */
+        .upload-container {
+            display: flex;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+            flex: 1;
+            min-height: 0; /* 重要：允许flex子元素收缩 */
+            height: auto; /* 改为自适应高度 */
+        }
+        
+        .upload-column {
+            width: 30%;
+            padding: 10px;
+            box-sizing: border-box;
+            height: auto; /* 改为自适应高度 */
+            overflow-y: visible; /* 移除滚动条 */
+        }
+        
+        .info-column {
+            width: 30%;
+            padding: 10px;
+            box-sizing: border-box;
+            height: auto; /* 改为自适应高度 */
+            overflow-y: visible; /* 移除滚动条 */
+        }
+        
+        /* 减小图片信息区域内部输入框间距 */
+        .info-column .form-group {
+            margin-bottom: 8px; /* 减小底部间距 */
+        }
+        
+        .info-column input, 
+        .info-column textarea {
+            padding: 6px 8px; /* 减小内部填充 */
+            margin-top: 2px; /* 减小顶部间距 */
+        }
+        
+        .info-column label {
+            margin-bottom: 2px; /* 减小标签底部间距 */
+            display: inline-block;
+        }
+        
+        /* 调整人员区域的间距 */
+        .people-section {
+            margin-top: 8px;
+        }
+        
+        .people-section h4 {
+            margin-bottom: 6px;
+        }
+        
+        .person-form {
+            padding: 6px;
+            margin-bottom: 6px;
+        }
+        
+        .person-form .form-group {
+            margin-bottom: 4px;
+        }
+        
+        .images-column {
+            width: 40%;
+            padding: 10px;
+            box-sizing: border-box;
+            height: auto; /* 自适应高度 */
+        }
+        
+        /* 预览放在图片下方 */
+        .upload-column {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        #image-preview-container {
+            margin-top: 15px;
+            margin-bottom: 15px;
+            height: 180px;
+            border: 1px dashed #ddd;
+            border-radius: 4px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #f9f9f9;
+            position: relative;
+            flex-grow: 0;
+        }
+        
+        #image-preview-container::before {
+            content: "待上传图片预览";
+            position: absolute;
+            color: #999;
+            font-size: 14px;
+        }
+        
+        /* 当有图片时隐藏提示文字 */
+        #image-preview-container.has-image::before {
+            display: none;
+        }
+        
+        #image-preview {
+            max-width: 100%;
+            max-height: 180px;
+            border-radius: 4px;
+            object-fit: contain;
+            z-index: 1;
+        }
+        
+        .preview-section {
+            margin-top: 15px;
+            flex-grow: 1;
+        }
+        
+        /* 地图显示区域样式 */
+        .map-row {
+            width: 100%;
+            margin-top: 20px;
+            margin-bottom: 20px;
+        }
+        
+        /* 已上传图片列表样式 */
+        .images-column .image-list {
+            height: 600px; /* 设置固定高度 */
+            overflow-y: auto; /* 添加垂直滚动条 */
+            padding-right: 10px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        
+        .images-column .image-card {
+            width: calc(50% - 8px); /* 两列布局，减去间距 */
+            margin-bottom: 10px;
+            background-color: #fff;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            box-sizing: border-box;
+        }
+        
+        .images-column .image-card img {
+            width: 100%;
+            height: 150px; /* 固定高度 */
+            object-fit: cover; /* 图片填充方式 */
+            display: block;
+            margin: 0 auto 5px;
+            border-radius: 4px;
+        }
+        
+        .images-column .image-info h4 {
+            margin: 5px 0;
+            font-size: 14px;
+        }
+        
+        .images-column .image-info p {
+            margin: 3px 0;
+            font-size: 12px;
+            line-height: 1.2;
+        }
+        
+        .images-column .image-actions {
+            margin-top: 5px;
+            display: flex;
+            gap: 5px;
+            justify-content: space-between;
+        }
+        
+        .images-column .small-btn {
+            padding: 3px 6px;
+            font-size: 11px;
+            min-height: 24px;
+            line-height: 1;
+            flex: 1;
+        }
+        
+        /* 确保所有列高度一致 */
+        .upload-column, .info-column, .images-column {
+            height: auto;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .upload-column form, .info-column, .images-column {
+            height: auto;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        /* 调整上传表单布局 */
+        .upload-column form {
+            display: flex;
+            flex-direction: column;
+            height: auto;
+        }
+        
+        .preview-section {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .info-preview {
+            background-color: #f9f9f9;
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid #e0e0e0;
+            height: 200px; /* 设置固定高度 */
+            overflow-y: auto; /* 启用垂直滚动条 */
+            font-size: 13px;
+            margin-bottom: 15px;
+        }
+        
+        /* 响应式调整 */
+        @media (max-width: 768px) {
+            .upload-column, .info-column, .images-column {
+                width: 100%;
+                margin-bottom: 20px;
+            }
+            .images-column .image-card {
+                width: 100%; /* 在小屏幕上变为单列 */
+            }
+        }
+        
+        /* 模态窗口样式 */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .modal-content {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            padding: 20px;
+            position: relative;
+            width: 90%;
+            max-width: 1000px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        
+        .small-modal {
+            max-width: 400px;
+        }
+        
+        .close-btn {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            font-size: 24px;
+            cursor: pointer;
+        }
+        
+        /* 图片详情样式 */
+        .image-detail-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+        
+        .image-detail-left {
+            width: 40%;
+        }
+        
+        .image-detail-left img {
+            width: 100%;
+            border-radius: 4px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+        
+        .image-detail-right {
+            width: 55%;
+        }
+        
+        .image-actions {
+            margin-top: 15px;
+            display: flex;
+            gap: 10px;
+        }
+        
+        .danger-btn {
+            background-color: #e74c3c;
+        }
+        
+        .danger-btn:hover {
+            background-color: #c0392b;
+        }
+        
+        #detail-people-list {
+            margin-top: 10px;
+            border-top: 1px solid #eee;
+            padding-top: 10px;
+        }
+        
+        .person-item {
+            background-color: #f9f9f9;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+            border-left: 3px solid #3498db;
+        }
+        
+        @media (max-width: 768px) {
+            .image-detail-left, .image-detail-right {
+                width: 100%;
+            }
+        }
+        
+        /* 空列表提示样式 */
+        .images-column .empty-list {
+            width: 100%;
+            text-align: center;
+            padding: 20px;
+            color: #888;
+            font-style: italic;
+        }
+        
+        /* 生成文件区域样式 */
+        .generated-files {
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        
+        .generated-files h4 {
+            margin-top: 0;
+            margin-bottom: 10px;
+            color: #495057;
+            font-size: 16px;
+        }
+        
+        .file-item {
+            transition: all 0.2s ease;
+        }
+        
+        .file-item:hover {
+            background-color: #e9ecef;
+        }
+        
+        .secondary-btn {
+            background-color: #6c757d;
+            color: white;
+        }
+        
+        .secondary-btn:hover {
+            background-color: #5a6268;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="navbar-brand">图片管理系统</div>
+        <div class="navbar-user" id="user-info">
+            <button onclick="window.location.href='/index'" class="back-home-btn">
+                <i class="fas fa-home"></i>返回主页
+            </button>
+            <span class="welcome-text">欢迎，<span id="username"></span></span>
+            <button id="logout-btn" class="btn secondary-btn">退出</button>
+        </div>
+    </nav>
+
+    <div class="page-container">
+        <!-- 左侧任务信息栏 -->
+        <div class="task-info-sidebar">
+            <button id="back-to-tasks-btn" class="btn secondary-btn">返回任务详情</button>
+            <h2>任务: <span id="current-task-title"></span></h2>
+            <p id="current-task-description"></p>
+            <div class="task-meta">
+                <p><strong>创建人:</strong> <span id="task-creator"></span></p>
+                <p><strong>创建时间:</strong> <span id="task-created-time"></span></p>
+            </div>
+            <!-- 添加任务操作按钮 -->
+            <div class="task-actions">
+            </div>
+            
+            <!-- 生成的文件链接显示区域 -->
+            <div id="generated-files-container" class="generated-files" style="margin-top: 15px; display: none;">
+                <h4>生成的文件</h4>
+                <div id="generated-files-list"></div>
+            </div>
+        </div>
+        
+        <!-- 右侧主要内容区 -->
+        <div class="main-content">
+            <!-- 图片上传和管理区域 -->
+            <div class="image-management">
+                <h3>图片管理</h3>
+                
+                <!-- 第一行：三列布局 -->
+                <div class="upload-container">
+                    <!-- 左侧: 上传图片模块 (30%) -->
+                    <div class="upload-column">
+                        <h4>上传图片</h4>
+                        <form id="upload-form" enctype="multipart/form-data">
+                            <div class="file-upload-container">
+                                <label for="file" class="file-upload-label">选择图片</label>
+                                <input type="file" id="file" name="file" accept="image/*" required onchange="previewImage(event)">
+                            </div>
+                            <div id="image-preview-container">
+                                <img id="image-preview" src="#" alt="预览" style="display: none;">
+                            </div>
+                            
+                            <!-- 预览内容放在图片下方 -->
+                            <div class="preview-section">
+                                <h4>信息预览</h4>
+                                <div id="info-preview" class="info-preview">
+                                    <p>请上传图片并填写信息</p>
+                                </div>
+                            </div>
+                            
+                            <button type="submit" class="btn primary-btn upload-btn">添加到待提交列表</button>
+                        </form>
+                    </div>
+                    
+                    <!-- 中间: 填写图片信息模块 (30%) -->
+                    <div class="info-column">
+                        <h4>图片信息</h4>
+                        <div class="form-group">
+                            <label for="time">时间 *</label>
+                            <input type="datetime-local" id="time" name="time" required step="1">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="location">地点 *</label>
+                            <input type="text" id="location" name="location" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="gps-coordinates">GPS坐标 (选填)</label>
+                            <div class="gps-inputs" style="display: flex; gap: 10px;">
+                                <input type="text" id="gps-latitude" name="gps_latitude" placeholder="纬度" style="flex: 1;">
+                                <input type="text" id="gps-longitude" name="gps_longitude" placeholder="经度" style="flex: 1;">
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="transportation">交通方式 *</label>
+                            <input type="text" id="transportation" name="transportation" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="description">事件描述 *</label>
+                            <textarea id="description" name="description" rows="3" required></textarea>
+                        </div>
+                        
+                        <!-- 人员信息 (选填) -->
+                        <div class="people-section">
+                            <h4>相关人员 (选填)</h4>
+                            <div id="people-container">
+                                <!-- 人员表单将在这里动态添加 -->
+                            </div>
+                            <button type="button" id="add-person-btn" class="btn secondary-btn">添加人员</button>
+                        </div>
+                    </div>
+                    
+                    <!-- 右侧: 待提交图片列表 (40%) -->
+                    <div class="images-column">
+                        <h4>待提交图片</h4>
+                        <div id="pending-image-list" class="image-list">
+                            <!-- 待提交图片将在这里动态加载 -->
+                        </div>
+                        <div class="upload-actions" style="margin-top: 15px; display: flex; gap: 10px; justify-content: space-between;">
+                            <button id="submit-all-btn" class="btn primary-btn" style="display: none; flex: 1;">
+                                <i class="fas fa-check"></i> 提交所有图片
+                            </button>
+                            <button id="cancel-all-btn" class="btn secondary-btn" style="display: none; flex: 1;">
+                                <i class="fas fa-times"></i> 取消所有
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 移除地图显示区域 -->
+            </div>
+        </div>
+    </div>
+
+    <!-- 添加人员模板 -->
+    <template id="person-template">
+        <div class="person-form">
+            <div class="form-group">
+                <input type="text" class="person-name" placeholder="姓名">
+            </div>
+            <div class="form-group">
+                <input type="text" class="person-id" placeholder="身份证号">
+            </div>
+            <div class="form-group">
+                <input type="text" class="person-household" placeholder="户籍地">
+            </div>
+            <button type="button" class="btn remove-btn remove-person-btn">删除</button>
+        </div>
+    </template>
+
+    <!-- 图片详情模态窗口 -->
+    <div id="image-detail-modal" class="modal">
+        <div class="modal-content large-modal">
+            <span class="close-btn">&times;</span>
+            <h3>图片详情</h3>
+            
+            <div class="image-detail-container">
+                <div class="image-detail-left">
+                    <img id="detail-image" src="" alt="图片详情">
+                    <div class="image-actions">
+                        <button id="view-original-btn" class="btn">查看原图</button>
+                        <button id="edit-image-btn" class="btn">编辑信息</button>
+                        <button id="delete-image-btn" class="btn danger-btn">删除图片</button>
+                    </div>
+                    
+                    <div class="creation-info" style="margin-top: 15px; padding: 8px; background-color: #f5f5f5; border-radius: 4px; border-left: 3px solid #3498db;"> 
+                        <p><strong>创建用户:</strong> <span id="detail-created-by"></span></p>
+                        <p><strong>创建时间:</strong> <span id="detail-created-at"></span></p>
+                    </div>
+                </div>
+                
+                <div class="image-detail-right">
+                    <div id="image-info-display">
+                        <h4>图片信息</h4>
+                        <p><strong>时间:</strong> <span id="detail-time"></span></p>
+                        <p><strong>地点:</strong> <span id="detail-location"></span></p>
+                        <p><strong>描述:</strong> <span id="detail-description"></span></p>
+                        <p><strong>交通方式:</strong> <span id="detail-transportation"></span></p>
+                        <p><strong>GPS坐标:</strong> <span id="detail-gps"></span></p>
+                        
+                        <h4>相关人员</h4>
+                        <div id="detail-people-list"></div>
+                    </div>
+                    
+                    <div id="image-edit-form" style="display: none;">
+                        <h4>编辑图片信息</h4>
+                        <form id="edit-image-form">
+                            <input type="hidden" id="edit-image-id">
+                            <div class="form-group">
+                                <label for="edit-time">时间</label>
+                                <input type="datetime-local" id="edit-time" required>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="edit-location">地点</label>
+                                <input type="text" id="edit-location" required>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>GPS坐标</label>
+                                <div class="gps-inputs" style="display: flex; gap: 10px;">
+                                    <input type="text" id="edit-gps-latitude" placeholder="纬度" style="flex: 1;">
+                                    <input type="text" id="edit-gps-longitude" placeholder="经度" style="flex: 1;">
+                                </div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="edit-transportation">交通方式</label>
+                                <input type="text" id="edit-transportation" required>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="edit-description">事件描述</label>
+                                <textarea id="edit-description" rows="3" required></textarea>
+                            </div>
+                            
+                            <h4>相关人员</h4>
+                            <div id="edit-people-container"></div>
+                            <button type="button" id="edit-add-person-btn" class="btn secondary-btn">添加人员</button>
+                            
+                            <div class="form-actions">
+                                <button type="submit" class="btn primary-btn">保存修改</button>
+                                <button type="button" id="cancel-edit-btn" class="btn">取消</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 确认删除模态窗口 -->
+    <div id="confirm-delete-modal" class="modal">
+        <div class="modal-content small-modal">
+            <h3>确认删除</h3>
+            <p>您确定要删除这张图片吗？此操作无法撤销。</p>
+            <div class="form-actions">
+                <button id="confirm-delete-btn" class="btn danger-btn">确认删除</button>
+                <button id="cancel-delete-btn" class="btn">取消</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 编辑待提交图片模态窗口 -->
+    <div id="edit-pending-modal" class="modal">
+        <div class="modal-content large-modal">
+            <span class="close-btn" id="close-edit-pending">&times;</span>
+            <h3>编辑待提交图片</h3>
+            
+            <div class="image-detail-container">
+                <div class="image-detail-left">
+                    <img id="pending-edit-image" src="" alt="待提交图片">
+                </div>
+                
+                <div class="image-detail-right">
+                    <form id="edit-pending-form">
+                        <input type="hidden" id="pending-edit-index">
+                        <div class="form-group">
+                            <label for="pending-edit-time">时间 *</label>
+                            <input type="datetime-local" id="pending-edit-time" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="pending-edit-location">地点 *</label>
+                            <input type="text" id="pending-edit-location" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>GPS坐标 (选填)</label>
+                            <div class="gps-inputs" style="display: flex; gap: 10px;">
+                                <input type="text" id="pending-edit-latitude" placeholder="纬度" style="flex: 1;">
+                                <input type="text" id="pending-edit-longitude" placeholder="经度" style="flex: 1;">
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="pending-edit-transportation">交通方式 *</label>
+                            <input type="text" id="pending-edit-transportation" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="pending-edit-description">事件描述 *</label>
+                            <textarea id="pending-edit-description" rows="3" required></textarea>
+                        </div>
+                        
+                        <h4>相关人员</h4>
+                        <div id="pending-edit-people-container"></div>
+                        <button type="button" id="pending-edit-add-person-btn" class="btn secondary-btn">添加人员</button>
+                        
+                        <div class="form-actions" style="margin-top: 20px; display: flex; gap: 10px;">
+                            <button type="submit" class="btn primary-btn">保存修改</button>
+                            <button type="button" id="pending-edit-cancel-btn" class="btn">取消</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-md-6">
+                <div id="excelFileInfo" class="mt-2"></div>
+            </div>
+            <div class="col-md-6">
+                <div id="reportFileInfo" class="mt-2"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 轨迹功能脚本 -->
+    <script src="/static/js/trajectory.js"></script>
+
+    <script>
+        // 获取当前任务ID（全局变量）
+        window.urlParams = new URLSearchParams(window.location.search);
+        window.taskId = urlParams.get('id');
+        
+        // 页面加载时执行
+        document.addEventListener('DOMContentLoaded', async function() {
+            try {
+                // 等待trajectory.js加载完成
+                await new Promise(resolve => {
+                    if (typeof window.generateTrack === 'function') {
+                        resolve();
+                    } else {
+                        // 如果trajectory.js还没加载完成，等待它加载
+                        const checkInterval = setInterval(() => {
+                            if (typeof window.generateTrack === 'function') {
+                                clearInterval(checkInterval);
+                                resolve();
+                            }
+                        }, 100);
+                    }
+                });
+
+                // 保存当前页面的关键函数，避免被app.js覆盖
+                window.originalPageFunctions = {
+                    uploadImage: window.uploadImage
+                };
+
+                // 检查用户是否已登录
+                const token = localStorage.getItem('token');
+                if (!token) {
+                    window.location.href = '/login';
+                    return;
+                }
+                
+                // 验证token有效性
+                verifyToken(token).then(valid => {
+                    if (!valid) {
+                        console.error('Token无效或已过期');
+                        localStorage.removeItem('token');
+                        localStorage.removeItem('username');
+                        window.location.href = '/login?expired=1';
+                        return;
+                    }
+                
+                    // 显示用户信息
+                    const username = localStorage.getItem('username');
+                    document.getElementById('username').textContent = username;
+                    
+                    // 加载任务详情
+                    loadTaskDetails();
+                    
+                    // 加载任务的图片列表
+                    loadTaskImages();
+                    
+                    // 注册事件监听
+                    setupEventListeners();
+                    
+                    // 确保默认添加一个人员表单
+                    addPersonForm();
+                    console.log('已添加默认人员表单');
+                });
+            } catch (err) {
+                console.error('页面初始化出错:', err);
+            }
+        });
+        
+        // 验证token有效性
+        async function verifyToken(token) {
+            try {
+                // 使用已存在的用户信息接口验证token
+                const response = await fetch('/api/users/me', {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                console.log('Token验证响应:', response.status, response.statusText);
+                return response.ok;
+            } catch (error) {
+                console.error('验证token失败:', error);
+                return false;
+            }
+        }
+        
+        // 全局请求封装，检查登录状态和token有效性
+        async function authenticatedFetch(url, options = {}) {
+            const token = localStorage.getItem('token');
+            
+            // 检查是否已登录
+            if (!token) {
+                showMessage('用户未登录，请先登录', 'error');
+                setTimeout(() => {
+                    window.location.href = '/frontend/login.html';
+                }, 1500);
+                throw new Error('用户未登录');
+            }
+            
+            console.log(`准备发送请求到: ${url}`);
+            
+            // 验证token有效性
+            const isValid = await verifyToken(token);
+            if (!isValid) {
+                showMessage('登录已过期，请重新登录', 'error');
+                localStorage.removeItem('token');
+                localStorage.removeItem('username');
+                setTimeout(() => {
+                    window.location.href = '/frontend/login.html?expired=1';
+                }, 1500);
+                throw new Error('登录已过期');
+            }
+            
+            // 设置默认请求头
+            if (!options.headers) {
+                options.headers = {};
+            }
+            options.headers['Authorization'] = `Bearer ${token}`;
+            
+            // 添加api前缀，确保URLs正确
+            const apiUrl = url.startsWith('/api/') ? url : url.startsWith('/api') ? url : `/api${url}`;
+            console.log(`实际请求URL: ${apiUrl}`);
+            
+            // 发送请求
+            const response = await fetch(apiUrl, options);
+            console.log(`请求结果: ${response.status} - ${response.statusText}`);
+            
+            // 检查是否401或403错误（未授权或禁止访问）
+            if (response.status === 401) {
+                showMessage('登录已过期，请重新登录', 'error');
+                localStorage.removeItem('token');
+                localStorage.removeItem('username');
+                setTimeout(() => {
+                    window.location.href = '/frontend/login.html?expired=1';
+                }, 1500);
+                throw new Error('登录已过期');
+            }
+            
+            return response;
+        }
+        
+        // 加载任务详情
+        async function loadTaskDetails() {
+            try {
+                const taskId = window.urlParams.get('id');
+                if (!taskId) {
+                    console.error('URL中缺少任务ID');
+                    alert('URL中缺少任务ID，请返回任务详情重新选择任务');
+                    window.location.href = '/frontend/index.html';
+                    return;
+                }
+                
+                // 保存任务ID到全局变量
+                window.taskId = taskId;
+                
+                // 清空生成文件列表
+                document.getElementById('generated-files-list').innerHTML = '';
+                document.getElementById('generated-files-container').style.display = 'none';
+                
+                // 设置页面任务ID
+                // document.getElementById('task-id').textContent = taskId;
+                
+                const response = await authenticatedFetch(`/tasks/${taskId}`);
+                const task = await response.json();
+                
+                // 设置currentTask全局变量，确保与app.js兼容
+                window.currentTask = task;
+                
+                document.getElementById('current-task-title').textContent = task.title || task.name;
+                document.getElementById('current-task-description').textContent = task.description;
+                document.getElementById('task-creator').textContent = task.owner?.username || '未知用户';
+                document.getElementById('task-created-time').textContent = new Date(task.created_at).toLocaleString();
+                document.title = `${task.title || task.name} - 图片管理系统`;
+            } catch (error) {
+                console.error('获取任务详情失败:', error);
+                if (error.message !== '用户未登录' && error.message !== '登录已过期') {
+                    alert('获取任务详情失败，请返回任务详情');
+                }
+            }
+        }
+        
+        // 加载任务的图片列表
+        async function loadTaskImages() {
+            try {
+                console.log('开始获取图片列表，任务ID:', window.taskId);
+                
+                const response = await authenticatedFetch(`/tasks/${window.taskId}/images`);
+                console.log('图片列表响应状态:', response.status);
+                
+                if (!response.ok) {
+                    const text = await response.text();
+                    console.error('响应详情:', text);
+                    throw new Error('获取图片列表失败');
+                }
+                
+                const images = await response.json();
+                console.log('成功获取图片列表，数量:', images.length);
+                renderImageList(images);
+            } catch (error) {
+                console.error('获取图片列表失败:', error);
+                if (error.message !== '用户未登录' && error.message !== '登录已过期') {
+                    showMessage('获取图片列表失败', 'error');
+                }
+            }
+        }
+        
+        // 渲染图片列表
+        async function renderImageList(images) {
+            const imageList = document.getElementById('image-list');
+            if (!imageList) {
+                console.log('未找到image-list元素，跳过渲染');
+                return;
+            }
+            
+            imageList.innerHTML = '';
+            
+            if (images.length === 0) {
+                imageList.innerHTML = '<p class="empty-list">暂无图片，请上传图片</p>';
+                return;
+            }
+            
+            // 获取当前用户信息，检查是否为管理员
+            const currentUsername = localStorage.getItem('username');
+            let isAdmin = false;
+            let isTaskAdmin = false;
+            
+            try {
+                // 检查系统管理员权限
+                console.log('获取用户信息以检查系统管理员权限');
+                const userResponse = await authenticatedFetch('/users/me');
+                if (userResponse.ok) {
+                    const user = await userResponse.json();
+                    console.log('用户信息:', user);
+                    isAdmin = user.is_admin;
+                    console.log('用户是否为系统管理员:', isAdmin);
+                } else {
+                    console.error('获取用户信息失败:', userResponse.status);
+                }
+                
+                // 检查任务管理员权限
+                console.log('获取任务权限信息以检查任务管理员权限');
+                const taskId = window.taskId;
+                const permissionResponse = await authenticatedFetch(`/tasks/${taskId}/user-permission`);
+                if (permissionResponse.ok) {
+                    const permission = await permissionResponse.json();
+                    console.log('任务权限信息:', permission);
+                    isTaskAdmin = permission.permission_type === 'admin' || permission.is_owner;
+                    console.log('用户是否为任务管理员或所有者:', isTaskAdmin);
+                } else {
+                    console.error('获取任务权限信息失败:', permissionResponse.status);
+                }
+            } catch (error) {
+                console.error('获取权限信息失败:', error);
+            }
+            
+            // 按时间排序图片
+            const sortedImages = [...images].sort((a, b) => {
+                return new Date(a.time) - new Date(b.time);
+            });
+            
+            // 为每张图片分配新的序号（基于时间排序）
+            sortedImages.forEach((image, index) => {
+                const card = document.createElement('div');
+                card.className = 'image-card';
+                
+                const formattedTime = new Date(image.time).toLocaleString();
+                const createdAt = new Date(image.created_at).toLocaleString();
+                
+                // 使用图片的实际创建者信息
+                const createdBy = image.created_by || '未知用户';
+                
+                // 检查当前用户是否有权限编辑/删除此图片
+                const canEdit = isAdmin || isTaskAdmin || image.created_by === currentUsername;
+                
+                // 简化日期显示
+                const shortTime = formattedTime.split(' ')[0]; // 只显示日期部分
+                const shortCreatedAt = createdAt.split(' ')[0]; // 简化创建时间显示
+                
+                // 处理图片路径
+                const imagePath = image.file_path.startsWith('/') ? image.file_path : `/${image.file_path}`;
+                
+                // 根据权限决定按钮显示
+                const editDeleteButtons = canEdit ? `
+                    <button class="btn small-btn edit-btn" data-id="${image.id}">编辑</button>
+                    <button class="btn small-btn danger-btn delete-btn" data-id="${image.id}">删除</button>
+                ` : '';
+                
+                card.innerHTML = `
+                    <img src="${getImageUrl(imagePath)}" alt="图片">
+                    <div class="image-info">
+                        <h4>序号: ${index + 1}</h4>
+                        <p>时间: ${formattedTime} | 地点: ${image.location}</p>
+                        <p class="creator-info" style="font-size: 11px; color: #666; margin: 2px 0;">创建: ${createdBy} (${createdAt})</p>
+                        <div class="image-actions">
+                            <button class="btn small-btn view-detail-btn" data-id="${image.id}">详情</button>
+                            ${editDeleteButtons}
+                        </div>
+                    </div>
+                `;
+                
+                imageList.appendChild(card);
+            });
+            
+            // 添加事件监听器
+            setupImageCardEventListeners();
+        }
+        
+        // 添加图片卡片事件监听器设置函数
+        function setupImageCardEventListeners() {
+            // 添加查看详情按钮事件
+            document.querySelectorAll('.view-detail-btn').forEach(button => {
+                button.addEventListener('click', function() {
+                    const imageId = this.getAttribute('data-id');
+                    showImageDetail(imageId);
+                });
+            });
+            
+            // 添加编辑按钮事件
+            document.querySelectorAll('.edit-btn').forEach(button => {
+                button.addEventListener('click', function() {
+                    const imageId = this.getAttribute('data-id');
+                    showImageDetail(imageId, true);
+                });
+            });
+            
+            // 添加删除按钮事件
+            document.querySelectorAll('.delete-btn').forEach(button => {
+                button.addEventListener('click', function() {
+                    const imageId = this.getAttribute('data-id');
+                    showDeleteConfirmation(imageId);
+                });
+            });
+        }
+        
+        // 显示图片详情
+        async function showImageDetail(imageId, editMode = false) {
+            try {
+                // 先获取用户信息，判断是否为管理员
+                console.log('获取用户信息以检查管理员权限');
+                const userResponse = await authenticatedFetch('/users/me');
+                if (!userResponse.ok) {
+                    console.error('获取用户信息失败:', userResponse.status);
+                    throw new Error('获取用户信息失败');
+                }
+                
+                const user = await userResponse.json();
+                console.log('用户信息:', user);
+                const isAdmin = user.is_admin;
+                console.log('用户是否为管理员:', isAdmin);
+                const currentUsername = localStorage.getItem('username');
+                console.log('当前用户名:', currentUsername);
+                
+                // 检查任务管理员权限
+                let isTaskAdmin = false;
+                console.log('获取任务权限信息以检查任务管理员权限');
+                const taskId = window.taskId;
+                try {
+                    const permissionResponse = await authenticatedFetch(`/tasks/${taskId}/user-permission`);
+                    if (permissionResponse.ok) {
+                        const permission = await permissionResponse.json();
+                        console.log('任务权限信息:', permission);
+                        isTaskAdmin = permission.permission_type === 'admin' || permission.is_owner;
+                        console.log('用户是否为任务管理员或所有者:', isTaskAdmin);
+                    } else {
+                        console.error('获取任务权限信息失败:', permissionResponse.status);
+                    }
+                } catch (error) {
+                    console.error('获取任务权限信息失败:', error);
+                }
+                
+                // 先获取所有图片，用于确定当前图片在时间顺序中的序号
+                const allImagesResponse = await authenticatedFetch(`/tasks/${window.taskId}/images`);
+                
+                if (!allImagesResponse.ok) {
+                    throw new Error('获取图片列表失败');
+                }
+                
+                const allImages = await allImagesResponse.json();
+                
+                // 按时间排序所有图片
+                const sortedImages = [...allImages].sort((a, b) => {
+                    return new Date(a.time) - new Date(b.time);
+                });
+                
+                // 找出当前图片在时间序列中的位置
+                const timeOrderIndex = sortedImages.findIndex(img => img.id == imageId);
+                const timeOrderNumber = timeOrderIndex > -1 ? timeOrderIndex + 1 : '未知';
+                
+                // 获取当前图片详情
+                const imageResponse = await authenticatedFetch(`/images/${imageId}`);
+                
+                if (!imageResponse.ok) {
+                    throw new Error('获取图片详情失败');
+                }
+                
+                const image = await imageResponse.json();
+                
+                // 检查用户是否有编辑权限
+                const canEdit = isAdmin || isTaskAdmin || image.created_by === currentUsername;
+                
+                // 根据权限显示或隐藏编辑和删除按钮
+                const editButton = document.getElementById('edit-image-btn');
+                const deleteButton = document.getElementById('delete-image-btn');
+                
+                if (canEdit) {
+                    editButton.style.display = 'inline-block';
+                    deleteButton.style.display = 'inline-block';
+                } else {
+                    editButton.style.display = 'none';
+                    deleteButton.style.display = 'none';
+                }
+                
+                // 处理图片路径
+                const imagePath = image.file_path.startsWith('/') ? image.file_path : `/${image.file_path}`;
+                
+                // 设置图片和基本信息
+                document.getElementById('detail-image').src = getImageUrl(imagePath);
+                // 添加时间序号显示
+                const detailTitle = document.querySelector('#image-detail-modal h3');
+                detailTitle.textContent = `图片详情 (序号: ${timeOrderNumber})`;
+                
+                document.getElementById('detail-time').textContent = new Date(image.time).toLocaleString();
+                document.getElementById('detail-location').textContent = image.location;
+                document.getElementById('detail-transportation').textContent = image.transportation;
+                document.getElementById('detail-description').textContent = image.description || '无';
+                
+                // 设置GPS信息
+                const gpsText = image.gps_latitude && image.gps_longitude 
+                    ? `${image.gps_latitude}, ${image.gps_longitude}`
+                    : '未设置';
+                document.getElementById('detail-gps').textContent = gpsText;
+                
+                // 添加创建时间和创建用户信息
+                console.log("创建时间原始数据:", image.created_at);
+                console.log("创建用户原始数据:", image.created_by);
+                
+                const createdAt = new Date(image.created_at).toLocaleString();
+                document.getElementById('detail-created-by').textContent = image.created_by || '未知用户';
+                document.getElementById('detail-created-at').textContent = createdAt;
+                
+                console.log("设置后的创建时间:", createdAt);
+                console.log("设置后的创建用户:", image.created_by || '未知用户');
+                
+                // 设置人员信息
+                const peopleList = document.getElementById('detail-people-list');
+                peopleList.innerHTML = '';
+                
+                if (image.people_involved && image.people_involved.length > 0) {
+                    image.people_involved.forEach(person => {
+                        const personItem = document.createElement('div');
+                        personItem.className = 'person-item';
+                        personItem.innerHTML = `
+                            <p><strong>姓名:</strong> ${person.name}</p>
+                            <p><strong>身份证:</strong> ${person.id_number}</p>
+                            <p><strong>户籍地:</strong> ${person.household_registration}</p>
+                        `;
+                        peopleList.appendChild(personItem);
+                    });
+                } else {
+                    peopleList.innerHTML = '<p>无相关人员信息</p>';
+                }
+                
+                // 如果是编辑模式，设置编辑表单
+                if (editMode) {
+                    // 隐藏信息显示，显示编辑表单
+                    document.getElementById('image-info-display').style.display = 'none';
+                    document.getElementById('image-edit-form').style.display = 'block';
+                    
+                    // 设置表单字段值
+                    document.getElementById('edit-image-id').value = image.id;
+                    
+                    // 将UTC时间转换为本地时间格式，适用于datetime-local输入
+                    const localDateTime = new Date(image.time);
+                    const timezoneOffset = localDateTime.getTimezoneOffset() * 60000;
+                    const localISOTime = (new Date(localDateTime - timezoneOffset)).toISOString().slice(0, 16);
+                    
+                    document.getElementById('edit-time').value = localISOTime;
+                    document.getElementById('edit-location').value = image.location;
+                    document.getElementById('edit-transportation').value = image.transportation;
+                    document.getElementById('edit-description').value = image.description;
+                    
+                    // 设置GPS信息
+                    if (image.gps_latitude) document.getElementById('edit-gps-latitude').value = image.gps_latitude;
+                    if (image.gps_longitude) document.getElementById('edit-gps-longitude').value = image.gps_longitude;
+                    
+                    // 设置人员信息
+                    const peopleContainer = document.getElementById('edit-people-container');
+                    peopleContainer.innerHTML = '';
+                    
+                    if (image.people_involved && image.people_involved.length > 0) {
+                        image.people_involved.forEach(person => {
+                            addEditPersonForm(person);
+                        });
+                    } else {
+                        // 如果没有现有人员，默认添加一个空的人员表单
+                        setTimeout(() => {
+                            try {
+                                addEditPersonForm();
+                                console.log('已添加空的编辑人员表单');
+                            } catch (err) {
+                                console.error('添加空的编辑人员表单失败:', err);
+                            }
+                        }, 100);
+                    }
+                } else {
+                    // 显示信息，隐藏编辑表单
+                    document.getElementById('image-info-display').style.display = 'block';
+                    document.getElementById('image-edit-form').style.display = 'none';
+                }
+                
+                // 显示模态窗口
+                const modal = document.getElementById('image-detail-modal');
+                modal.style.display = 'flex';
+                
+                // 注册查看原图按钮事件
+                document.getElementById('view-original-btn').onclick = function() {
+                    window.open(`/uploads${imagePath}`, '_blank');
+                };
+                
+                // 注册编辑按钮事件
+                document.getElementById('edit-image-btn').onclick = function() {
+                    document.getElementById('image-info-display').style.display = 'none';
+                    document.getElementById('image-edit-form').style.display = 'block';
+                    
+                    // 填充编辑表单数据
+                    document.getElementById('edit-image-id').value = image.id;
+                    
+                    // 将UTC时间转换为本地时间格式
+                    const localDateTime = new Date(image.time);
+                    const timezoneOffset = localDateTime.getTimezoneOffset() * 60000;
+                    const localISOTime = (new Date(localDateTime - timezoneOffset)).toISOString().slice(0, 16);
+                    
+                    document.getElementById('edit-time').value = localISOTime;
+                    document.getElementById('edit-location').value = image.location;
+                    document.getElementById('edit-transportation').value = image.transportation;
+                    document.getElementById('edit-description').value = image.description;
+                    
+                    if (image.gps_latitude) document.getElementById('edit-gps-latitude').value = image.gps_latitude;
+                    if (image.gps_longitude) document.getElementById('edit-gps-longitude').value = image.gps_longitude;
+                    
+                    // 清空并添加人员信息
+                    const peopleContainer = document.getElementById('edit-people-container');
+                    peopleContainer.innerHTML = '';
+                    
+                    if (image.people_involved && image.people_involved.length > 0) {
+                        image.people_involved.forEach(person => {
+                            addEditPersonForm(person);
+                        });
+                    } else {
+                        // 如果没有现有人员，默认添加一个空的人员表单
+                        setTimeout(() => {
+                            try {
+                                addEditPersonForm();
+                                console.log('已添加空的编辑人员表单');
+                            } catch (err) {
+                                console.error('添加空的编辑人员表单失败:', err);
+                            }
+                        }, 100);
+                    }
+                };
+                
+                // 注册删除按钮事件
+                document.getElementById('delete-image-btn').onclick = function() {
+                    showDeleteConfirmation(image.id);
+                };
+            } catch (error) {
+                console.error('获取图片详情失败:', error);
+                showMessage('获取图片详情失败', 'error');
+            }
+        }
+        
+        // 添加编辑人员表单
+        function addEditPersonForm(person = null) {
+            const container = document.getElementById('edit-people-container');
+            if (!container) {
+                console.error('找不到编辑人员容器');
+                return;
+            }
+            
+            const personForm = document.createElement('div');
+            personForm.className = 'person-form';
+            
+            personForm.innerHTML = `
+                <div class="form-group">
+                    <input type="text" class="person-name" placeholder="姓名" value="${person ? person.name : ''}">
+                </div>
+                <div class="form-group">
+                    <input type="text" class="person-id" placeholder="身份证号" value="${person ? person.id_number : ''}">
+                </div>
+                <div class="form-group">
+                    <input type="text" class="person-household" placeholder="户籍地" value="${person ? person.household_registration : ''}">
+                </div>
+                <button type="button" class="btn remove-btn remove-person-btn">删除</button>
+            `;
+            
+            // 添加删除按钮事件
+            personForm.querySelector('.remove-person-btn').addEventListener('click', function() {
+                container.removeChild(personForm);
+            });
+            
+            container.appendChild(personForm);
+        }
+        
+        // 添加人员表单
+        function addPersonForm() {
+            const template = document.getElementById('person-template');
+            if (!template) {
+                console.error('找不到人员模板');
+                return;
+            }
+            
+            const container = document.getElementById('people-container');
+            if (!container) {
+                console.error('找不到人员容器');
+                return;
+            }
+            
+            const personNode = document.importNode(template.content, true);
+            
+            // 添加删除按钮事件
+            personNode.querySelector('.remove-person-btn').addEventListener('click', function() {
+                container.removeChild(this.closest('.person-form'));
+                updateInfoPreview();
+            });
+            
+            container.appendChild(personNode);
+            updateInfoPreview();
+        }
+        
+        // 显示删除确认
+        function showDeleteConfirmation(imageId) {
+            const confirmModal = document.getElementById('confirm-delete-modal');
+            confirmModal.style.display = 'flex';
+            
+            // 确认删除按钮事件
+            document.getElementById('confirm-delete-btn').onclick = function() {
+                deleteImage(imageId);
+                confirmModal.style.display = 'none';
+            };
+            
+            // 取消删除按钮事件
+            document.getElementById('cancel-delete-btn').onclick = function() {
+                confirmModal.style.display = 'none';
+            };
+        }
+        
+        // 删除图片
+        async function deleteImage(imageId) {
+            try {
+                const imageResponse = await authenticatedFetch(`/images/${imageId}`);
+                if (!imageResponse.ok) {
+                    throw new Error('获取图片信息失败');
+                }
+                
+                const image = await imageResponse.json();
+                const currentUsername = localStorage.getItem('username');
+                
+                // 检查当前用户是否是图片创建者或管理员
+                // 首先获取用户信息判断是否为管理员
+                console.log('获取用户信息以检查管理员权限');
+                const userResponse = await authenticatedFetch('/users/me');
+                if (!userResponse.ok) {
+                    console.error('获取用户信息失败:', userResponse.status);
+                    throw new Error('获取用户信息失败');
+                }
+                
+                const user = await userResponse.json();
+                console.log('用户信息:', user);
+                const isAdmin = user.is_admin;
+                console.log('用户是否为管理员:', isAdmin);
+                console.log('图片创建者:', image.created_by);
+                console.log('当前用户:', currentUsername);
+                
+                // 检查任务管理员权限
+                let isTaskAdmin = false;
+                console.log('获取任务权限信息以检查任务管理员权限');
+                const taskId = window.taskId;
+                try {
+                    const permissionResponse = await authenticatedFetch(`/tasks/${taskId}/user-permission`);
+                    if (permissionResponse.ok) {
+                        const permission = await permissionResponse.json();
+                        console.log('任务权限信息:', permission);
+                        isTaskAdmin = permission.permission_type === 'admin' || permission.is_owner;
+                        console.log('用户是否为任务管理员或所有者:', isTaskAdmin);
+                    } else {
+                        console.error('获取任务权限信息失败:', permissionResponse.status);
+                    }
+                } catch (error) {
+                    console.error('获取任务权限信息失败:', error);
+                }
+                
+                // 如果不是图片上传者且不是系统管理员且不是任务管理员，则不允许删除
+                if (image.created_by !== currentUsername && !isAdmin && !isTaskAdmin) {
+                    showMessage('您没有权限删除此图片，只有图片上传者、系统管理员和任务管理员可以删除图片', 'error');
+                    return;
+                }
+                
+                console.log('权限验证通过，开始删除图片');
+                
+                const response = await authenticatedFetch(`/images/${imageId}`, {
+                    method: 'DELETE'
+                });
+                
+                if (!response.ok) {
+                    throw new Error('删除图片失败');
+                }
+                
+                const result = await response.json();
+                
+                showMessage('图片已成功删除', 'success');
+                
+                // 关闭模态窗口
+                document.getElementById('image-detail-modal').style.display = 'none';
+                document.getElementById('confirm-delete-modal').style.display = 'none';
+                
+                // 重新加载图片列表
+                loadTaskImages();
+            } catch (error) {
+                console.error('删除图片失败:', error);
+                showMessage('删除图片失败: ' + error.message, 'error');
+            }
+        }
+        
+        // 设置事件监听
+        function setupEventListeners() {
+            // 返回任务详情
+            document.getElementById('back-to-tasks-btn').addEventListener('click', function() {
+                window.location.href = `/image?task_id=${window.taskId}`;
+            });
+            
+            // 删除生成轨迹和生成轨迹报告按钮的事件监听
+            
+            // 添加人员按钮
+            document.getElementById('add-person-btn').addEventListener('click', function() {
+                addPersonForm();
+            });
+            
+            // 上传图片表单提交
+            const uploadForm = document.getElementById('upload-form');
+            if (uploadForm) {
+                uploadForm.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    // 不再调用uploadImage函数
+                });
+            }
+            
+            // 图片信息输入更新预览
+            document.getElementById('time').addEventListener('change', updateInfoPreview);
+            document.getElementById('location').addEventListener('input', updateInfoPreview);
+            document.getElementById('description').addEventListener('input', updateInfoPreview);
+            document.getElementById('transportation').addEventListener('input', updateInfoPreview);
+            document.getElementById('gps-latitude').addEventListener('input', updateInfoPreview);
+            document.getElementById('gps-longitude').addEventListener('input', updateInfoPreview);
+            
+            // 退出登录
+            document.getElementById('logout-btn').addEventListener('click', function() {
+                localStorage.removeItem('token');
+                localStorage.removeItem('username');
+                window.location.href = '/frontend/login.html';
+            });
+            
+            // 关闭模态窗口按钮
+            document.querySelectorAll('.close-btn').forEach(button => {
+                button.addEventListener('click', function() {
+                    const modal = this.closest('.modal');
+                    if (modal) {
+                        modal.style.display = 'none';
+                    }
+                });
+            });
+            
+            // 编辑图片中的添加人员按钮
+            document.getElementById('edit-add-person-btn').addEventListener('click', function() {
+                addEditPersonForm();
+            });
+            
+            // 取消编辑按钮
+            document.getElementById('cancel-edit-btn').addEventListener('click', function() {
+                document.getElementById('image-info-display').style.display = 'block';
+                document.getElementById('image-edit-form').style.display = 'none';
+            });
+            
+            // 编辑图片表单提交
+            document.getElementById('edit-image-form').addEventListener('submit', function(e) {
+                e.preventDefault();
+                updateImage();
+            });
+            
+            // 编辑待提交图片中的添加人员按钮
+            document.getElementById('pending-edit-add-person-btn').addEventListener('click', function() {
+                addPendingEditPersonForm();
+            });
+            
+            // 编辑待提交图片表单提交
+            document.getElementById('edit-pending-form').addEventListener('submit', savePendingImageEdit);
+            
+            // 取消编辑待提交图片
+            document.getElementById('pending-edit-cancel-btn').addEventListener('click', function() {
+                document.getElementById('edit-pending-modal').style.display = 'none';
+            });
+            
+            // 关闭编辑待提交图片模态窗口
+            document.getElementById('close-edit-pending').addEventListener('click', function() {
+                document.getElementById('edit-pending-modal').style.display = 'none';
+            });
+        }
+        
+        // 图片预览
+        function previewImage(event) {
+            const preview = document.getElementById('image-preview');
+            const previewContainer = document.getElementById('image-preview-container');
+            const file = event.target.files[0];
+            
+            if (file) {
+                const reader = new FileReader();
+                
+                reader.onload = function(e) {
+                    preview.src = e.target.result;
+                    preview.style.display = 'block';
+                    // 添加一个类来控制显示/隐藏文字的状态
+                    previewContainer.classList.add('has-image');
+                    updatePreview();
+                }
+                
+                reader.readAsDataURL(file);
+            } else {
+                preview.src = '#';
+                preview.style.display = 'none';
+                // 移除类，恢复默认状态
+                previewContainer.classList.remove('has-image');
+                updatePreview();
+            }
+        }
+        
+        // 更新信息预览
+        function updateInfoPreview() {
+            const infoPreview = document.getElementById('info-preview');
+            if (!infoPreview) return;
+            
+            const time = document.getElementById('time').value;
+            const location = document.getElementById('location').value;
+            const description = document.getElementById('description').value;
+            const transportation = document.getElementById('transportation').value;
+            const latitude = document.getElementById('gps-latitude').value;
+            const longitude = document.getElementById('gps-longitude').value;
+            
+            // 获取所有人员信息
+            const people = [];
+            document.querySelectorAll('.person-form').forEach(form => {
+                const name = form.querySelector('.person-name').value;
+                const id = form.querySelector('.person-id').value;
+                const household = form.querySelector('.person-household').value;
+                
+                if (name || id || household) {
+                    people.push({
+                        name: name,
+                        id_number: id,
+                        household_registration: household
+                    });
+                }
+            });
+            
+            const hasFile = document.getElementById('file').files.length > 0;
+            const fileName = hasFile ? document.getElementById('file').files[0].name : '未选择文件';
+            
+            const formattedTime = time ? new Date(time).toLocaleString() : '未填写';
+            
+            // 如果完全没有信息，显示默认提示
+            if (!hasFile && !time && !location && !description && !transportation && !latitude && !longitude && people.length === 0) {
+                infoPreview.innerHTML = '<p>请上传图片并填写信息</p>';
+                return;
+            }
+            
+            let previewHTML = `
+                <h4>上传信息预览</h4>
+                <p><strong>文件:</strong> ${fileName}</p>
+                <p><strong>时间:</strong> ${formattedTime}</p>
+                <p><strong>地点:</strong> ${location || '未填写'}</p>
+                <p><strong>描述:</strong> ${description || '未填写'}</p>
+                <p><strong>交通方式:</strong> ${transportation || '未填写'}</p>
+            `;
+            
+            if (latitude || longitude) {
+                previewHTML += `<p><strong>GPS坐标:</strong> ${latitude || '未填写'}, ${longitude || '未填写'}</p>`;
+            }
+            
+            if (people.length > 0) {
+                previewHTML += `<h4>相关人员:</h4><ul>`;
+                people.forEach((person, index) => {
+                    previewHTML += `
+                        <li>
+                            <p>人员 ${index + 1}: ${person.name}</p>
+                            <p>身份证: ${person.id_number}</p>
+                            <p>户籍: ${person.household_registration}</p>
+                        </li>
+                    `;
+                });
+                previewHTML += `</ul>`;
+            }
+            
+            infoPreview.innerHTML = previewHTML;
+        }
+        
+        // 上传图片
+        async function uploadImage() {
+            try {
+                console.log('执行upload.html中的uploadImage函数');
+                const fileInput = document.getElementById('file');
+                if (!fileInput.files.length) {
+                    showMessage('请选择文件', 'error');
+                    return;
+                }
+                
+                // 获取表单数据
+                const time = document.getElementById('time').value;
+                const location = document.getElementById('location').value;
+                const description = document.getElementById('description').value;
+                const transportation = document.getElementById('transportation').value;
+                const latitude = document.getElementById('gps-latitude').value;
+                const longitude = document.getElementById('gps-longitude').value;
+                
+                if (!time || !location || !transportation) {
+                    showMessage('请填写必填信息（时间、地点、交通方式）', 'error');
+                    return;
+                }
+                
+                // 设置formData
+                const formData = new FormData();
+                formData.append('file', fileInput.files[0]);
+                
+                // 确保任务ID正确设置
+                const taskId = window.taskId;
+                if (!taskId) {
+                    console.error('任务ID未设置');
+                    showMessage('任务ID未设置，请刷新页面', 'error');
+                    return;
+                }
+                
+                // 添加任务ID
+                formData.append('task_id', taskId);
+                
+                // 添加其他信息
+                // 修正时间格式
+                try {
+                    // 使用ISO格式，但去掉毫秒部分
+                    const dateObj = new Date(time);
+                    // 确保时间有效
+                    if (isNaN(dateObj)) {
+                        throw new Error('无效的时间格式');
+                    }
+                    // 尝试不带Z的时间格式: YYYY-MM-DDTHH:MM:SS
+                    const isoString = dateObj.toISOString().split('.')[0];
+                    console.log('转换后的时间格式:', isoString);
+                    formData.append('time', isoString);
+                } catch (e) {
+                    console.error('时间格式转换错误:', e);
+                    showMessage('时间格式错误，请检查时间输入', 'error');
+                    return;
+                }
+                
+                formData.append('location', location);
+                formData.append('description', description || '');
+                formData.append('transportation', transportation);
+                
+                if (latitude && longitude) {
+                    formData.append('gps_latitude', latitude);
+                    formData.append('gps_longitude', longitude);
+                }
+                
+                // 获取所有人员信息
+                const people = [];
+                document.querySelectorAll('.person-form').forEach(form => {
+                    const name = form.querySelector('.person-name').value;
+                    const id = form.querySelector('.person-id').value;
+                    const household = form.querySelector('.person-household').value;
+                    
+                    if (name || id || household) {
+                        people.push({
+                            name: name,
+                            id_number: id,
+                            household_registration: household
+                        });
+                    }
+                });
+                
+                // 添加人员信息
+                if (people.length > 0) {
+                    formData.append('people_involved', JSON.stringify(people));
+                }
+                
+                // 显示上传中
+                showMessage('上传中...', 'info');
+                
+                // 显示上传中提示
+                const uploadButton = document.querySelector('#upload-form button[type="submit"]');
+                const originalText = uploadButton.textContent;
+                uploadButton.textContent = '上传中...';
+                uploadButton.disabled = true;
+                
+                try {
+                    console.log('执行upload.html中的uploadImage函数');
+                    
+                    // 打印详细的请求信息
+                    console.log('准备上传图片到任务ID:', window.taskId);
+                    console.log('FormData内容检查:');
+                    for (let pair of formData.entries()) {
+                        console.log(pair[0] + ': ' + (pair[0] === 'file' ? '文件对象' : pair[1]));
+                    }
+                    
+                    const response = await authenticatedFetch(`/images/${window.taskId}`, {
+                        method: 'POST',
+                        body: formData
+                    });
+                    
+                    console.log('Upload response status:', response.status);
+                    if (!response.ok) {
+                        // 尝试读取错误详情
+                        let errorDetails = '';
+                        try {
+                            const errorText = await response.text();
+                            console.log('错误响应内容:', errorText);
+                            try {
+                                const errorJson = JSON.parse(errorText);
+                                console.log('解析的错误JSON:', errorJson);
+                                if (errorJson.detail) {
+                                    errorDetails = ` - ${errorJson.detail}`;
+                                }
+                            } catch (e) {
+                                console.log('响应不是JSON格式');
+                                errorDetails = ` - ${errorText}`;
+                            }
+                        } catch (e) {
+                            console.log('无法读取错误响应:', e);
+                        }
+                        
+                        throw new Error(`Failed to upload image: ${response.status}${errorDetails}`);
+                    }
+                    
+                    const data = await response.json();
+                    showMessage('上传成功', 'success');
+                    
+                    // 重置表单
+                    document.getElementById('upload-form').reset();
+                    document.getElementById('image-preview').style.display = 'none';
+                    document.getElementById('people-container').innerHTML = '';
+                    
+                    // 清空所有字段
+                    document.getElementById('time').value = '';
+                    document.getElementById('gps-latitude').value = '';
+                    document.getElementById('gps-longitude').value = '';
+                    document.getElementById('location').value = '';
+                    document.getElementById('transportation').value = '';
+                    document.getElementById('description').value = '';
+                    
+                    // 清空预览信息
+                    document.getElementById('info-preview').innerHTML = '<p>请上传图片并填写信息</p>';
+                    
+                    // 添加默认人员输入框
+                    addPersonForm();
+                    
+                    // 重新加载图片列表
+                    loadTaskImages();
+                } finally {
+                    // 恢复上传按钮
+                    uploadButton.textContent = originalText;
+                    uploadButton.disabled = false;
+                }
+            } catch (error) {
+                console.error('Upload image error:', error);
+                showMessage('上传失败: ' + error.message, 'error');
+                
+                // 确保按钮状态恢复
+                const uploadButton = document.querySelector('#upload-form button[type="submit"]');
+                if (uploadButton) {
+                    uploadButton.textContent = '上传';
+                    uploadButton.disabled = false;
+                }
+            }
+        }
+        
+        // 更新图片信息
+        async function updateImage() {
+            try {
+                const imageId = document.getElementById('edit-image-id').value;
+                
+                // 收集表单数据
+                const time = document.getElementById('edit-time').value;
+                const location = document.getElementById('edit-location').value;
+                const description = document.getElementById('edit-description').value;
+                const transportation = document.getElementById('edit-transportation').value;
+                const latitude = document.getElementById('edit-gps-latitude').value;
+                const longitude = document.getElementById('edit-gps-longitude').value;
+                
+                if (!time || !location || !description || !transportation) {
+                    showMessage('请填写必填信息', 'error');
+                    return;
+                }
+                
+                // 收集人员信息
+                const people = [];
+                document.querySelectorAll('#edit-people-container .person-form').forEach(form => {
+                    const name = form.querySelector('.person-name').value;
+                    const id = form.querySelector('.person-id').value;
+                    const household = form.querySelector('.person-household').value;
+                    
+                    if (name && id && household) {
+                        people.push({
+                            name: name,
+                            id_number: id,
+                            household_registration: household
+                        });
+                    }
+                });
+                
+                // 检查当前用户是否有权限编辑
+                const currentUsername = localStorage.getItem('username');
+                const imageResponse = await authenticatedFetch(`/images/${imageId}`);
+                if (!imageResponse.ok) {
+                    throw new Error('获取图片信息失败');
+                }
+                
+                const imageData = await imageResponse.json();
+                
+                // 验证权限 - 只有图片上传者和管理员可以编辑
+                // 获取用户信息判断是否为管理员
+                const userResponse = await authenticatedFetch('/users/me');
+                if (!userResponse.ok) {
+                    throw new Error('获取用户信息失败');
+                }
+                
+                const user = await userResponse.json();
+                const isAdmin = user.is_admin;
+                
+                // 检查任务管理员权限
+                let isTaskAdmin = false;
+                console.log('获取任务权限信息以检查任务管理员权限');
+                const taskId = window.taskId;
+                try {
+                    const permissionResponse = await authenticatedFetch(`/tasks/${taskId}/user-permission`);
+                    if (permissionResponse.ok) {
+                        const permission = await permissionResponse.json();
+                        console.log('任务权限信息:', permission);
+                        isTaskAdmin = permission.permission_type === 'admin' || permission.is_owner;
+                        console.log('用户是否为任务管理员或所有者:', isTaskAdmin);
+                    } else {
+                        console.error('获取任务权限信息失败:', permissionResponse.status);
+                    }
+                } catch (error) {
+                    console.error('获取任务权限信息失败:', error);
+                }
+                
+                // 如果不是图片上传者且不是系统管理员且不是任务管理员，则不允许编辑
+                if (imageData.created_by !== currentUsername && !isAdmin && !isTaskAdmin) {
+                    showMessage('您没有权限编辑此图片，只有图片上传者、系统管理员和任务管理员可以编辑图片', 'error');
+                    return;
+                }
+                
+                // 准备请求数据，包含所有必需字段
+                const updateData = {
+                    location: location,
+                    description: description,
+                    transportation: transportation,
+                    task_id: parseInt(window.taskId),
+                    people_involved: people,
+                    file_path: imageData.file_path, // 确保包含原始文件路径
+                    sequence_number: imageData.sequence_number // 确保包含序列号
+                };
+                
+                // 修正时间格式
+                try {
+                    // 使用ISO格式，但去掉毫秒部分
+                    const dateObj = new Date(time);
+                    // 确保时间有效
+                    if (isNaN(dateObj)) {
+                        throw new Error('无效的时间格式');
+                    }
+                    // 尝试不带Z的时间格式: YYYY-MM-DDTHH:MM:SS
+                    const isoString = dateObj.toISOString().split('.')[0];
+                    console.log('更新时的时间格式:', isoString);
+                    updateData.time = isoString;
+                } catch (e) {
+                    console.error('时间格式转换错误:', e);
+                    showMessage('时间格式错误，请检查时间输入', 'error');
+                    return;
+                }
+                
+                if (latitude) updateData.gps_latitude = parseFloat(latitude);
+                if (longitude) updateData.gps_longitude = parseFloat(longitude);
+                
+                // 发送请求
+                const updateResponse = await authenticatedFetch(`/images/${imageId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(updateData)
+                });
+                
+                if (!updateResponse.ok) {
+                    const text = await updateResponse.text();
+                    console.error('更新失败:', text);
+                    throw new Error('更新图片信息失败');
+                }
+                
+                const updatedImage = await updateResponse.json();
+                
+                showMessage('图片信息已成功更新', 'success');
+                
+                // 关闭编辑表单，显示详情
+                document.getElementById('image-info-display').style.display = 'block';
+                document.getElementById('image-edit-form').style.display = 'none';
+                
+                // 更新详情显示
+                document.getElementById('detail-time').textContent = new Date(updatedImage.time).toLocaleString();
+                document.getElementById('detail-location').textContent = updatedImage.location;
+                document.getElementById('detail-transportation').textContent = updatedImage.transportation;
+                document.getElementById('detail-description').textContent = updatedImage.description || '无';
+                
+                const gpsText = updatedImage.gps_latitude && updatedImage.gps_longitude 
+                    ? `${updatedImage.gps_latitude}, ${updatedImage.gps_longitude}`
+                    : '未设置';
+                document.getElementById('detail-gps').textContent = gpsText;
+                
+                // 更新人员信息
+                const peopleList = document.getElementById('detail-people-list');
+                peopleList.innerHTML = '';
+                
+                if (updatedImage.people_involved && updatedImage.people_involved.length > 0) {
+                    updatedImage.people_involved.forEach(person => {
+                        const personItem = document.createElement('div');
+                        personItem.className = 'person-item';
+                        personItem.innerHTML = `
+                            <p><strong>姓名:</strong> ${person.name}</p>
+                            <p><strong>身份证:</strong> ${person.id_number}</p>
+                            <p><strong>户籍地:</strong> ${person.household_registration}</p>
+                        `;
+                        peopleList.appendChild(personItem);
+                    });
+                } else {
+                    peopleList.innerHTML = '<p>无相关人员信息</p>';
+                }
+                
+                // 重新加载图片列表
+                loadTaskImages();
+            } catch (error) {
+                console.error('更新图片信息失败:', error);
+                showMessage('更新图片信息失败: ' + error.message, 'error');
+            }
+        }
+
+        // 移除地图事件初始化函数
+        function setupMapEvents() {
+            // 移除地图相关事件
+        }
+    </script>
+    
+    <!-- 修改脚本加载顺序，确保app.js在最后加载且不覆盖当前页面的函数 -->
+    <script>
+        // 在加载app.js后恢复页面原有函数
+        function restorePageFunctions() {
+            console.log('恢复页面原始函数');
+            if (window.originalPageFunctions && window.originalPageFunctions.uploadImage) {
+                console.log('使用原始的uploadImage函数');
+                window.uploadImage = window.originalPageFunctions.uploadImage;
+            } else {
+                console.warn('未找到原始的uploadImage函数');
+            }
+        }
+    </script>
+    
+    <!-- 添加备用updatePreview函数定义，仅当该函数未定义时使用 -->
+    <script>
+        // 检查updatePreview是否已定义，如果未定义则提供一个实现
+        if (typeof updatePreview === 'undefined') {
+            console.log('提供备用的updatePreview函数实现');
+            function updatePreview() {
+                // 调用页面中已有的updateInfoPreview函数
+                if (typeof updateInfoPreview === 'function') {
+                    updateInfoPreview();
+                }
+            }
+        }
+    </script>
+    
+    <!-- 地图控制增强脚本 -->
+    <script>
+        // 移除地图控制相关代码
+    </script>
+
+    <!-- 修改图片URL构建 -->
+    <script>
+        // 修改图片URL构建
+        function getImageUrl(imagePath) {
+            if (!imagePath) return '';
+            // 移除开头的uploads/或/api/uploads/，统一使用/api/uploads/
+            const cleanPath = imagePath.replace(/^\/?(uploads\/|api\/uploads\/)?/, '');
+            return `/api/uploads/${cleanPath}`;
+        }
+
+        // 更新图片预览函数
+        function updateImagePreview(imageUrl) {
+            const previewImage = document.getElementById('preview-image');
+            if (previewImage) {
+                previewImage.src = getImageUrl(imageUrl);
+            }
+        }
+
+        // 更新图片列表显示
+        function updateImageList(images) {
+            const imageList = document.getElementById('image-list');
+            if (!imageList) return;
+            
+            imageList.innerHTML = '';
+            images.forEach(image => {
+                const imageUrl = getImageUrl(image.file_path);
+                const li = document.createElement('li');
+                li.innerHTML = `
+                    <img src="${imageUrl}" alt="任务图片" style="max-width: 100px; cursor: pointer;"
+                         onclick="showImageDetail(${image.id})">
+                    <div class="image-info">
+                        <p>时间: ${formatDateTime(image.time)}</p>
+                        <p>地点: ${image.location || '未知'}</p>
+                    </div>
+                `;
+                imageList.appendChild(li);
+            });
+        }
+    </script>
+    <!-- 添加轨迹相关脚本 -->
+    <!-- <script src="/static/js/trajectory.js"></script> -->
+    <script>
+        // 页面加载时获取用户名
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('页面加载完成，开始获取用户名');
+            
+            // 检查token
+            const token = localStorage.getItem('token');
+            console.log('Token状态:', token ? '存在' : '不存在');
+            
+            if (!token) {
+                console.log('未找到token，重定向到登录页面');
+                window.location.href = '/login';
+                return;
+            }
+            
+            // 获取用户名
+            const username = localStorage.getItem('username');
+            console.log('从localStorage获取的用户名:', username);
+            
+            if (!username) {
+                console.log('未找到用户名，重定向到登录页面');
+                window.location.href = '/login';
+                return;
+            }
+            
+            // 设置用户名显示
+            const usernameElement = document.getElementById('username');
+            if (usernameElement) {
+                usernameElement.textContent = username;
+                console.log('用户名已成功设置到页面');
+            } else {
+                console.error('未找到username元素');
+            }
+            
+            // 设置退出按钮事件
+            const logoutBtn = document.getElementById('logout-btn');
+            if (logoutBtn) {
+                logoutBtn.addEventListener('click', function() {
+                    localStorage.removeItem('token');
+                    localStorage.removeItem('username');
+                    window.location.href = '/login';
+                });
+            }
+        });
+
+        // 退出按钮点击事件
+        document.getElementById('logout-btn').addEventListener('click', function() {
+            localStorage.removeItem('token');
+            localStorage.removeItem('username');
+            window.location.href = '/login';
+        });
+    </script>
+
+    <script>
+        // 存储待提交的图片
+        let pendingImages = [];
+        
+        // 修改文件选择处理函数
+        function handleFileSelect(event) {
+            const files = event.target.files;
+            if (files.length > 0) {
+                Array.from(files).forEach(file => {
+                    if (file.type.startsWith('image/')) {
+                        const reader = new FileReader();
+                        reader.onload = function(e) {
+                            const imageData = {
+                                file: file,
+                                preview: e.target.result,
+                                time: document.getElementById('time').value || new Date().toISOString(),
+                                location: document.getElementById('location').value || '',
+                                transportation: document.getElementById('transportation').value || '',
+                                description: document.getElementById('description').value || '',
+                                latitude: document.getElementById('gps-latitude').value || '',
+                                longitude: document.getElementById('gps-longitude').value || '',
+                                people: getPeopleData()
+                            };
+                            pendingImages.push(imageData);
+                            updatePendingImageList();
+                            showMessage('图片已添加到待提交列表', 'success');
+                            
+                            // 清空表单中的所有字段
+                            document.getElementById('time').value = '';
+                            document.getElementById('location').value = '';
+                            document.getElementById('transportation').value = '';
+                            document.getElementById('description').value = '';
+                            document.getElementById('gps-latitude').value = '';
+                            document.getElementById('gps-longitude').value = '';
+                            
+                            // 清空人员信息
+                            document.getElementById('people-container').innerHTML = '';
+                            addPersonForm(); // 添加一个空的人员表单
+                            
+                            // 更新信息预览
+                            document.getElementById('info-preview').innerHTML = '<p>请上传图片并填写信息</p>';
+                            
+                            // 清空文件输入框
+                            document.getElementById('file').value = '';
+                            document.getElementById('image-preview').style.display = 'none';
+                            document.getElementById('image-preview-container').classList.remove('has-image');
+                        };
+                        reader.readAsDataURL(file);
+                    } else {
+                        showMessage('请只上传图片文件', 'error');
+                    }
+                });
+            }
+        }
+        
+        // 获取人员信息
+        function getPeopleData() {
+            const people = [];
+            document.querySelectorAll('.person-form').forEach(form => {
+                const name = form.querySelector('.person-name').value;
+                const id = form.querySelector('.person-id').value;
+                const household = form.querySelector('.person-household').value;
+                
+                if (name || id || household) {
+                    people.push({
+                        name: name,
+                        id_number: id,
+                        household_registration: household
+                    });
+                }
+            });
+            return people;
+        }
+        
+        // 更新待提交图片列表显示
+        function updatePendingImageList() {
+            const container = document.getElementById('pending-image-list');
+            container.innerHTML = '';
+            
+            if (pendingImages.length === 0) {
+                container.innerHTML = '<p class="empty-list">暂无待提交的图片</p>';
+                document.getElementById('submit-all-btn').style.display = 'none';
+                document.getElementById('cancel-all-btn').style.display = 'none';
+                return;
+            }
+            
+            pendingImages.forEach((image, index) => {
+                const imageCard = document.createElement('div');
+                imageCard.className = 'image-card';
+                imageCard.innerHTML = `
+                    <img src="${image.preview}" alt="预览图片">
+                    <div class="image-info">
+                        <p><i class="fas fa-clock"></i> ${new Date(image.time).toLocaleString()}</p>
+                        <p><i class="fas fa-map-marker-alt"></i> ${image.location || '未填写地点'}</p>
+                        <p><i class="fas fa-car"></i> ${image.transportation || '未填写交通方式'}</p>
+                    </div>
+                    <div class="image-actions">
+                        <button class="btn small-btn edit-pending-btn" data-index="${index}">
+                            <i class="fas fa-edit"></i> 编辑
+                        </button>
+                        <button class="btn small-btn danger-btn" onclick="removePendingImage(${index})">
+                            <i class="fas fa-trash"></i> 删除
+                        </button>
+                    </div>
+                `;
+                container.appendChild(imageCard);
+            });
+            
+            // 添加编辑按钮事件监听
+            document.querySelectorAll('.edit-pending-btn').forEach(button => {
+                button.addEventListener('click', function() {
+                    const index = parseInt(this.getAttribute('data-index'));
+                    showPendingImageEditModal(index);
+                });
+            });
+            
+            // 显示提交和取消按钮
+            document.getElementById('submit-all-btn').style.display = 'block';
+            document.getElementById('cancel-all-btn').style.display = 'block';
+        }
+        
+        // 显示待提交图片编辑模态窗口
+        function showPendingImageEditModal(index) {
+            const image = pendingImages[index];
+            if (!image) return;
+            
+            // 设置图片预览
+            document.getElementById('pending-edit-image').src = image.preview;
+            
+            // 设置索引
+            document.getElementById('pending-edit-index').value = index;
+            
+            // 设置表单值
+            // 处理时间格式
+            const localDateTime = new Date(image.time);
+            const timezoneOffset = localDateTime.getTimezoneOffset() * 60000;
+            const localISOTime = (new Date(localDateTime - timezoneOffset)).toISOString().slice(0, 16);
+            
+            document.getElementById('pending-edit-time').value = localISOTime;
+            document.getElementById('pending-edit-location').value = image.location || '';
+            document.getElementById('pending-edit-transportation').value = image.transportation || '';
+            document.getElementById('pending-edit-description').value = image.description || '';
+            document.getElementById('pending-edit-latitude').value = image.latitude || '';
+            document.getElementById('pending-edit-longitude').value = image.longitude || '';
+            
+            // 清空并添加人员信息
+            const peopleContainer = document.getElementById('pending-edit-people-container');
+            peopleContainer.innerHTML = '';
+            
+            if (image.people && image.people.length > 0) {
+                image.people.forEach(person => {
+                    addPendingEditPersonForm(person);
+                });
+            } else {
+                // 如果没有人员，添加一个空的表单
+                addPendingEditPersonForm();
+            }
+            
+            // 显示模态窗口
+            document.getElementById('edit-pending-modal').style.display = 'flex';
+        }
+        
+        // 添加待提交图片编辑人员表单
+        function addPendingEditPersonForm(person = null) {
+            const container = document.getElementById('pending-edit-people-container');
+            if (!container) return;
+            
+            const personForm = document.createElement('div');
+            personForm.className = 'person-form';
+            
+            personForm.innerHTML = `
+                <div class="form-group">
+                    <input type="text" class="person-name" placeholder="姓名" value="${person ? person.name : ''}">
+                </div>
+                <div class="form-group">
+                    <input type="text" class="person-id" placeholder="身份证号" value="${person ? person.id_number : ''}">
+                </div>
+                <div class="form-group">
+                    <input type="text" class="person-household" placeholder="户籍地" value="${person ? person.household_registration : ''}">
+                </div>
+                <button type="button" class="btn remove-btn remove-person-btn">删除</button>
+            `;
+            
+            // 添加删除按钮事件
+            personForm.querySelector('.remove-person-btn').addEventListener('click', function() {
+                container.removeChild(personForm);
+            });
+            
+            container.appendChild(personForm);
+        }
+        
+        // 保存待提交图片编辑
+        function savePendingImageEdit(event) {
+            event.preventDefault();
+            
+            const index = parseInt(document.getElementById('pending-edit-index').value);
+            if (isNaN(index) || index < 0 || index >= pendingImages.length) return;
+            
+            // 获取表单数据
+            const time = document.getElementById('pending-edit-time').value;
+            const location = document.getElementById('pending-edit-location').value;
+            const transportation = document.getElementById('pending-edit-transportation').value;
+            const description = document.getElementById('pending-edit-description').value;
+            const latitude = document.getElementById('pending-edit-latitude').value;
+            const longitude = document.getElementById('pending-edit-longitude').value;
+            
+            if (!time || !location || !transportation || !description) {
+                showMessage('请填写必填字段', 'error');
+                return;
+            }
+            
+            // 收集人员信息
+            const people = [];
+            document.querySelectorAll('#pending-edit-people-container .person-form').forEach(form => {
+                const name = form.querySelector('.person-name').value;
+                const id = form.querySelector('.person-id').value;
+                const household = form.querySelector('.person-household').value;
+                
+                if (name || id || household) {
+                    people.push({
+                        name: name,
+                        id_number: id,
+                        household_registration: household
+                    });
+                }
+            });
+            
+            // 更新待提交图片信息
+            pendingImages[index].time = time;
+            pendingImages[index].location = location;
+            pendingImages[index].transportation = transportation;
+            pendingImages[index].description = description;
+            pendingImages[index].latitude = latitude;
+            pendingImages[index].longitude = longitude;
+            pendingImages[index].people = people;
+            
+            // 关闭模态窗口
+            document.getElementById('edit-pending-modal').style.display = 'none';
+            
+            // 更新列表显示
+            updatePendingImageList();
+            
+            showMessage('待提交图片信息已更新', 'success');
+        }
+        
+        // 移除待提交图片
+        function removePendingImage(index) {
+            pendingImages.splice(index, 1);
+            updatePendingImageList();
+            showMessage('图片已从待提交列表中移除', 'info');
+        }
+        
+        // 提交所有待提交图片
+        async function submitAllImages() {
+            if (pendingImages.length === 0) {
+                showMessage('没有待提交的图片', 'error');
+                return;
+            }
+            
+            const taskId = new URLSearchParams(window.location.search).get('id');
+            if (!taskId) {
+                showMessage('未找到任务ID', 'error');
+                return;
+            }
+            
+            try {
+                showMessage('正在提交图片...', 'info');
+                
+                for (const image of pendingImages) {
+                    const formData = new FormData();
+                    formData.append('file', image.file);
+                    formData.append('time', image.time);
+                    formData.append('location', image.location);
+                    formData.append('transportation', image.transportation);
+                    formData.append('description', image.description);
+                    
+                    if (image.latitude) formData.append('gps_latitude', image.latitude);
+                    if (image.longitude) formData.append('gps_longitude', image.longitude);
+                    
+                    if (image.people.length > 0) {
+                        formData.append('people_involved', JSON.stringify(image.people));
+                    }
+                    
+                    // 修正API路径
+                    const response = await authenticatedFetch(`/images/${taskId}`, {
+                        method: 'POST',
+                        body: formData
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error(`上传图片 ${image.file.name} 失败`);
+                    }
+                }
+                
+                showMessage('所有图片上传成功', 'success');
+                // 清空待提交列表
+                pendingImages = [];
+                updatePendingImageList();
+                
+                // 清空表单
+                document.getElementById('upload-form').reset();
+                document.getElementById('image-preview').style.display = 'none';
+                document.getElementById('image-preview-container').classList.remove('has-image');
+                document.getElementById('people-container').innerHTML = '';
+                document.getElementById('info-preview').innerHTML = '<p>请上传图片并填写信息</p>';
+                addPersonForm(); // 添加默认人员输入框
+                
+                // 延迟跳转到任务详情页
+                setTimeout(() => {
+                    window.location.href = `/image?task_id=${taskId}`;
+                }, 1500);
+                
+            } catch (error) {
+                console.error('上传图片失败:', error);
+                showMessage('上传图片失败: ' + error.message, 'error');
+            }
+        }
+        
+        // 取消所有待提交图片
+        function cancelAllImages() {
+            if (confirm('确定要取消所有待提交的图片吗？')) {
+                pendingImages = [];
+                updatePendingImageList();
+                showMessage('已取消所有待提交的图片', 'info');
+            }
+        }
+        
+        // 修改表单提交事件
+        document.getElementById('upload-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const fileInput = document.getElementById('file');
+            if (!fileInput.files.length) {
+                showMessage('请选择文件', 'error');
+                return;
+            }
+            
+            // 获取表单数据
+            const time = document.getElementById('time').value;
+            const location = document.getElementById('location').value;
+            const transportation = document.getElementById('transportation').value;
+            
+            if (!time || !location || !transportation) {
+                showMessage('请填写必填信息（时间、地点、交通方式）', 'error');
+                return;
+            }
+            
+            // 添加到待提交列表
+            handleFileSelect({ target: { files: fileInput.files } });
+            
+            // 重置表单
+            document.getElementById('upload-form').reset();
+            document.getElementById('image-preview').style.display = 'none';
+            document.getElementById('image-preview-container').classList.remove('has-image');
+            document.getElementById('people-container').innerHTML = '';
+            document.getElementById('info-preview').innerHTML = '<p>请上传图片并填写信息</p>';
+            addPersonForm(); // 添加默认人员输入框
+        });
+        
+        // 添加提交和取消按钮事件监听器
+        document.getElementById('submit-all-btn').addEventListener('click', submitAllImages);
+        document.getElementById('cancel-all-btn').addEventListener('click', cancelAllImages);
+    </script>
+</body>
+</html> 
+
+

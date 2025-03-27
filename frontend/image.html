@@ -1,0 +1,2372 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>任务详情 - 图片管理系统</title>
+    <!-- 添加版本号防止缓存 -->
+    <link rel="stylesheet" href="/static/css/styles.css?v=1.0.2">
+    <!-- 添加Font Awesome图标库 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <!-- 添加XLSX库 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- 地图相关脚本 -->
+    <script src="/static/js/map.js"></script>
+    <!-- 高德地图API配置 -->
+    <script>
+        // 动态加载高德地图API
+        function loadAMapScript() {
+            return new Promise((resolve, reject) => {
+                if (window.AMap) {
+                    resolve(window.AMap);
+                    return;
+                }
+                
+                const script = document.createElement('script');
+                // 使用从模板变量获取的API密钥，而不是硬编码
+                script.src = `https://webapi.amap.com/maps?v=2.0&key={{ amap_api_key }}&plugin=AMap.ToolBar,AMap.Scale,AMap.Geocoder,AMap.TileLayer`;
+                script.async = true;
+                script.onerror = () => reject(new Error('加载高德地图失败'));
+                script.onload = () => resolve(window.AMap);
+                document.head.appendChild(script);
+            });
+        }
+        
+        // 从URL获取任务ID
+        const urlParams = new URLSearchParams(window.location.search);
+        const taskId = urlParams.get('task_id');
+        
+        // 页面加载完成后初始化地图
+        document.addEventListener('DOMContentLoaded', async function() {
+            try {
+                if (!taskId) {
+                    console.error('未找到任务ID');
+                    return;
+                }
+                
+                // 如果地图API没有自动加载，则手动加载
+                if (!window.AMap) {
+                    await loadAMapScript();
+                }
+                
+                // 触发地图初始化事件
+                const event = new Event('amap-loaded');
+                window.dispatchEvent(event);
+                
+                // 标记API已加载完成
+                window.mapApiLoaded = true;
+            } catch (error) {
+                console.error('高德地图加载失败:', error);
+                alert('高德地图加载失败，请检查网络连接或刷新页面重试');
+            }
+        });
+    </script>
+    <style>
+        .back-home-btn {
+            padding: 6px 12px;
+            border: 1px solid #3498db;
+            border-radius: 4px;
+            background: transparent;
+            color: #3498db;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .back-home-btn:hover {
+            background: #3498db;
+            color: white;
+        }
+        
+        .container {
+            display: flex;
+            gap: 10px;
+            max-width: 100%;
+            padding: 10px;
+            margin-top: 60px; /* 为固定导航栏留出空间 */
+        }
+        
+        .sidebar {
+            width: 320px;
+            min-width: 320px;
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            height: calc(100vh - 160px); /* 调整高度以适应固定导航栏 */
+            position: sticky;
+            top: 80px;
+        }
+        
+        .main-content {
+            flex: 1;
+            max-width: calc(100% - 340px);
+            overflow-x: hidden;
+            padding: 0 5px;
+        }
+        
+        .image-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 5px;
+            padding: 5px;
+        }
+        
+        .task-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            padding: 0 10px;
+        }
+        .task-info {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .image-card {
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            background: white;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+            margin: 0;
+            height: 300px;
+            min-width: 280px;
+            position: relative;
+        }
+        .image-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        .image-card .image-container {
+            width: 100%;
+            height: 180px;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #f8f9fa;
+            border-bottom: 1px solid #e0e0e0;
+            position: relative;
+        }
+        .image-card .image-actions {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            display: flex;
+            gap: 5px;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        .image-card:hover .image-actions {
+            opacity: 1;
+        }
+        .image-card .action-btn {
+            padding: 4px 8px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            color: white;
+            background-color: rgba(0, 0, 0, 0.6);
+            transition: background-color 0.2s;
+        }
+        .image-card .action-btn:hover {
+            background-color: rgba(0, 0, 0, 0.8);
+        }
+        .image-card .action-btn.detail-btn {
+            background-color: rgba(52, 152, 219, 0.8);
+        }
+        .image-card .action-btn.original-btn {
+            background-color: rgba(46, 204, 113, 0.8);
+        }
+        .image-card .action-btn.delete-btn {
+            background-color: rgba(231, 76, 60, 0.8);
+        }
+        .image-card img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            display: block;
+        }
+        .image-info {
+            padding: 8px;
+            background: #fff;
+            height: 120px;
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+            overflow: hidden;
+        }
+        .image-info p {
+            margin: 2px;
+            font-size: 12px;
+            color: #333;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            line-height: 1.3;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .image-info i {
+            width: 16px;
+            color: #666;
+            font-size: 14px;
+            text-align: center;
+        }
+        .image-info p:last-child {
+            margin-bottom: 0;
+        }
+        .image-card:hover .image-info {
+            background: #f8f9fa;
+        }
+        .btn-container {
+            display: flex;
+            gap: 10px;
+        }
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.2s;
+        }
+        .primary-btn {
+            background-color: #3498db;
+            color: white;
+        }
+        .primary-btn:hover {
+            background-color: #2980b9;
+        }
+        .secondary-btn {
+            background-color: #6c757d;
+            color: white;
+        }
+        .secondary-btn:hover {
+            background-color: #5a6268;
+        }
+        /* 删除导航栏样式定义 - 已在styles.css中定义 */
+        .trajectory-buttons {
+            margin-top: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .trajectory-buttons button {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 5px;
+        }
+        .generated-files-container {
+            margin-top: 20px;
+            display: none;
+            max-height: calc(100vh - 380px);
+            overflow-y: auto;
+            padding-right: 5px;
+        }
+        .generated-files-container::-webkit-scrollbar {
+            width: 6px;
+        }
+        .generated-files-container::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+        .generated-files-container::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 4px;
+        }
+        .generated-files-container::-webkit-scrollbar-thumb:hover {
+            background: #a8a8a8;
+        }
+        .generated-files-list {
+            list-style: none;
+            padding: 0;
+        }
+        .generated-files-list li {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 8px;
+            padding: 12px;
+            background: #fff;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            margin-bottom: 10px;
+            transition: all 0.2s ease;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+        .generated-files-list li:hover {
+            box-shadow: 0 3px 8px rgba(0,0,0,0.1);
+            border-color: #3498db;
+            transform: translateY(-2px);
+        }
+        .generated-files-list li span.file-name {
+            font-size: 14px;
+            color: #333;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            width: 100%;
+            max-width: 100%;
+            display: block;
+            padding: 3px 0;
+            cursor: default;
+            font-weight: 500;
+        }
+        
+        .generated-files-list li span.file-name:hover {
+            white-space: normal;
+            word-break: break-all;
+            background-color: #f0f7ff;
+            border-radius: 3px;
+            padding: 3px 4px;
+            transition: all 0.2s ease;
+            margin: 0 -4px;
+        }
+        
+        .generated-files-list .file-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            width: 100%;
+        }
+        
+        .generated-files-list .file-actions a,
+        .generated-files-list .file-actions button {
+            flex: 1;
+            min-width: 70px;
+            font-size: 12px;
+            padding: 6px 10px;
+            text-align: center;
+            border-radius: 4px;
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+        }
+        
+        /* 路径轨迹区域样式 */
+        .path-tracking-section {
+            background-color: #fff;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        
+        .path-tracking-section h2 {
+            margin: 0 0 15px 0;
+            color: #333;
+            font-size: 1.2rem;
+        }
+        
+        .path-content {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .path-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+        }
+        
+        .path-info {
+            display: flex;
+            gap: 20px;
+        }
+        
+        .path-info p {
+            margin: 0;
+            color: #666;
+        }
+        
+        .path-visualization {
+            min-height: 300px;
+            background-color: #f8f9fa;
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .path-placeholder {
+            color: #999;
+            text-align: center;
+        }
+        
+        /* 地图容器样式 */
+        #map-container {
+            width: 100%;
+            height: 800px;
+            margin-top: 20px;
+            display: none;
+            position: relative;
+            z-index: 10;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        #map-container.visible {
+            display: block !important;
+        }
+        
+        .map-controls {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        .path-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+        }
+        
+        .path-info {
+            display: flex;
+            gap: 20px;
+        }
+        
+        .path-info p {
+            margin: 0;
+            color: #666;
+        }
+        
+        /* 高德地图瓦片样式修复 */
+        .amap-layer img {
+            max-width: none !important;
+            max-height: none !important;
+        }
+        
+        /* 地图标记样式 */
+        .amap-marker-content {
+            background-color: #3388ff;
+            color: white;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+            border: 2px solid white;
+            box-shadow: 0 0 3px rgba(0,0,0,0.3);
+        }
+        
+        /* 添加弹窗相关样式 */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+        }
+        
+        .modal-content {
+            position: relative;
+            background-color: #fff;
+            margin: 3% auto;
+            padding: 15px;
+            width: 90%;
+            max-width: 700px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        
+        .close-modal {
+            position: absolute;
+            right: 20px;
+            top: 10px;
+            font-size: 24px;
+            cursor: pointer;
+            color: #666;
+        }
+        
+        .image-detail-container {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .image-preview {
+            width: 100%;
+            max-width: 100%;
+            text-align: center;
+            margin-bottom: 5px;
+        }
+        
+        .image-preview img {
+            max-width: 100%;
+            max-height: 250px;
+            height: auto;
+            border-radius: 4px;
+        }
+        
+        .image-info-detail h2 {
+            margin: 0 0 10px 0;
+            font-size: 18px;
+        }
+        
+        .image-info-detail p {
+            margin: 5px 0;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .image-info-detail i {
+            width: 16px;
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .edit-form {
+            display: none;
+            margin-top: 10px;
+        }
+        
+        .edit-form input, .edit-form select {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 5px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        
+        .edit-form textarea {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 5px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            resize: vertical;
+        }
+        
+        .person-form {
+            border: 1px solid #eee;
+            padding: 6px;
+            margin-bottom: 6px;
+            border-radius: 4px;
+            position: relative;
+        }
+        
+        .remove-person-btn {
+            position: absolute;
+            right: 5px;
+            top: 5px;
+            background: none;
+            border: none;
+            font-size: 16px;
+            cursor: pointer;
+            color: #e74c3c;
+        }
+        
+        .form-group {
+            margin-bottom: 8px;
+        }
+        
+        .action-buttons {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+        }
+        
+        .action-buttons button {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+        }
+        
+        .edit-btn {
+            background-color: #3498db;
+            color: white;
+        }
+        
+        .delete-btn {
+            background-color: #e74c3c;
+            color: white;
+        }
+        
+        .save-btn {
+            background-color: #2ecc71;
+            color: white;
+            display: none;
+        }
+        
+        .cancel-btn {
+            background-color: #95a5a6;
+            color: white;
+            display: none;
+        }
+
+        .person-info-inputs {
+            display: flex;
+            gap: 5px;
+        }
+
+        .gps-inputs {
+            display: flex;
+            gap: 5px;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="navbar-brand">图片管理系统</div>
+        <div class="navbar-user">
+            <button onclick="window.location.href='/index'" class="back-home-btn">
+                <i class="fas fa-home"></i>返回主页
+            </button>
+            <span>欢迎，<span id="username"></span></span>
+            <button id="logout-btn" class="btn secondary-btn">退出</button>
+        </div>
+    </nav>
+
+    <div class="container">
+        <!-- 左侧任务信息 -->
+        <div class="sidebar">
+            <button id="back-btn" class="btn secondary-btn" style="width: 100%; margin-bottom: 15px;">返回任务列表</button>
+            <h2 id="task-title"></h2>
+            <p id="task-description"></p>
+            <p>创建时间：<span id="task-create-time"></span></p>
+            <p>创建人：<span id="task-creator"></span></p>
+            <div class="trajectory-buttons">
+                <button id="generate-track-btn" onclick="generateTrackCustom()" class="btn primary-btn" style="display: none;">
+                    <i class="fas fa-route"></i> 生成轨迹表
+                </button>
+                <button id="generate-report-btn" onclick="generateReportCustom()" class="btn primary-btn" style="display: none;">
+                    <i class="fas fa-file-alt"></i> 生成轨迹报告
+                </button>
+            </div>
+            <div id="generated-files-container" class="generated-files-container">
+                <h3 style="font-size: 16px; margin-bottom: 10px; color: #333;">已生成的轨迹文件</h3>
+                <ul id="generated-files-list" class="generated-files-list"></ul>
+            </div>
+        </div>
+        
+        <!-- 右侧图片网格 -->
+        <div class="main-content">
+            <div class="task-header">
+                <div style="display: flex; align-items: center; gap: 20px;">
+                    <h1>任务详情</h1>
+                    <button id="upload-btn" class="btn primary-btn" style="display: none;">上传图片</button>
+                </div>
+            </div>
+            
+            <div class="image-grid" id="image-grid">
+                <!-- 图片卡片将在这里动态加载 -->
+            </div>
+
+            <!-- 路径轨迹功能区域 -->
+            <div class="path-tracking-section">
+                <h2>路径轨迹</h2>
+                <div class="path-content">
+                    <div class="path-controls">
+                        <div class="map-controls">
+                            <button type="button" id="plot-points-btn" class="btn primary-btn" style="display: none;">打点上图</button>
+                            <button type="button" id="hide-map-btn" class="btn secondary-btn" style="display: none;">
+                                <i class="fas fa-eye-slash"></i> 隐藏地图
+                            </button>
+                            <button type="button" id="layer-control-btn" class="btn secondary-btn" style="display: none;">
+                                <i class="fas fa-layer-group"></i> 图层控制
+                            </button>
+                        </div>
+                    </div>
+                    <div id="map-container" style="display: none;">
+                        <!-- 地图将在这里显示 -->
+                        <!-- 图层控制面板 -->
+                        <div id="layer-control-panel" style="display: none; position: absolute; top: 10px; right: 10px; z-index: 100; background: white; border-radius: 8px; padding: 15px; box-shadow: 0 3px 10px rgba(0,0,0,0.2); width: 220px; font-size: 14px; border: 1px solid rgba(0,0,0,0.1);">
+                            <div style="font-weight: bold; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding-bottom: 8px;">
+                                <span style="color: #333;"><i class="fas fa-layer-group" style="margin-right: 5px; color: #3498db;"></i>图层控制</span>
+                                <span class="close-layer-panel" style="cursor: pointer; font-size: 18px; color: #666; transition: color 0.2s; width: 24px; height: 24px; text-align: center; line-height: 24px; border-radius: 50%;">&times;</span>
+                            </div>
+                            <div style="display: flex; flex-direction: column; gap: 10px;">
+                                <label style="display: flex; align-items: center; gap: 8px; padding: 4px; transition: background-color 0.2s; border-radius: 4px; cursor: pointer; user-select: none;">
+                                    <input type="checkbox" id="vector-layer-toggle" class="layer-toggle" checked style="width: 16px; height: 16px;"> 
+                                    <span style="color: #333;">矢量地图</span>
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 8px; padding: 4px; transition: background-color 0.2s; border-radius: 4px; cursor: pointer; user-select: none;">
+                                    <input type="checkbox" id="satellite-layer-toggle" class="layer-toggle" style="width: 16px; height: 16px;"> 
+                                    <span style="color: #333;">卫星图层</span>
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 8px; padding: 4px; transition: background-color 0.2s; border-radius: 4px; cursor: pointer; user-select: none;">
+                                    <input type="checkbox" id="roadnet-layer-toggle" class="layer-toggle" style="width: 16px; height: 16px;"> 
+                                    <span style="color: #333;">路网图层</span>
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 8px; padding: 4px; transition: background-color 0.2s; border-radius: 4px; cursor: pointer; user-select: none;">
+                                    <input type="checkbox" id="traffic-layer-toggle" class="layer-toggle" style="width: 16px; height: 16px;"> 
+                                    <span style="color: #333;">交通图层</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 添加轨迹相关脚本 -->
+    <script src="/static/js/trajectory.js"></script>
+    <script>
+        // 全局请求封装，检查登录状态和token有效性
+        async function authenticatedFetch(url, options = {}) {
+            const token = localStorage.getItem('token');
+            
+            // 检查是否已登录
+            if (!token) {
+                showMessage('用户未登录，请先登录', 'error');
+                setTimeout(() => {
+                    window.location.href = '/frontend/login.html';
+                }, 1500);
+                throw new Error('用户未登录');
+            }
+            
+            console.log(`准备发送请求到: ${url}`);
+            
+            // 设置默认请求头
+            if (!options.headers) {
+                options.headers = {};
+            }
+            options.headers['Authorization'] = `Bearer ${token}`;
+            
+            // 添加api前缀，确保URLs正确
+            const apiUrl = url.startsWith('/api/') ? url : url.startsWith('/api') ? url : `/api${url}`;
+            console.log(`实际请求URL: ${apiUrl}`);
+            
+            // 发送请求
+            const response = await fetch(apiUrl, options);
+            console.log(`请求结果: ${response.status} - ${response.statusText}`);
+            
+            // 检查是否401或403错误（未授权或禁止访问）
+            if (response.status === 401) {
+                showMessage('登录已过期，请重新登录', 'error');
+                localStorage.removeItem('token');
+                localStorage.removeItem('username');
+                setTimeout(() => {
+                    window.location.href = '/frontend/login.html?expired=1';
+                }, 1500);
+                throw new Error('登录已过期');
+            }
+            
+            return response;
+        }
+        
+        // 页面加载时获取任务信息和图片列表
+        document.addEventListener('DOMContentLoaded', function() {
+            // 获取用户名
+            const username = localStorage.getItem('username');
+            if (username) {
+                document.getElementById('username').textContent = username;
+            } else {
+                window.location.href = '/login';
+                return;
+            }
+
+            // 从URL获取任务ID
+            const urlParams = new URLSearchParams(window.location.search);
+            const taskId = urlParams.get('task_id');
+            if (!taskId) {
+                window.location.href = '/task';
+                return;
+            }
+
+            // 不再立即加载文件列表，而是在检查权限后根据权限决定是否加载
+            // fetchGeneratedFiles(taskId);
+
+            // 获取任务信息
+            fetch(`/api/tasks/${taskId}`, {
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('获取任务信息失败');
+                }
+                return response.json();
+            })
+            .then(async task => {
+                console.log('任务信息:', task);
+                // 设置任务基本信息
+                document.getElementById('task-title').textContent = task.title || '';
+                document.getElementById('task-description').textContent = task.description || '';
+                document.getElementById('task-create-time').textContent = task.created_at ? new Date(task.created_at).toLocaleString() : '';
+                // 从task.owner中获取用户名
+                document.getElementById('task-creator').textContent = task.owner?.username || '未知用户';
+                
+                // 检查用户权限并显示/隐藏轨迹按钮
+                const currentUsername = localStorage.getItem('username');
+                const isTaskOwner = task.owner?.username === currentUsername;
+                console.log('当前用户:', currentUsername);
+                console.log('任务创建者:', task.owner?.username);
+                console.log('是否为任务创建者:', isTaskOwner);
+                
+                try {
+                    // 获取用户信息判断是否为管理员
+                    const userResponse = await authenticatedFetch('/users/me');
+                    if (userResponse.ok) {
+                        const user = await userResponse.json();
+                        const isAdmin = user.is_admin;
+                        console.log('是否为管理员:', isAdmin);
+                        
+                        // 获取任务权限信息
+                        const permissionResponse = await authenticatedFetch(`/tasks/${taskId}/user-permission`);
+                        if (permissionResponse.ok) {
+                            const permission = await permissionResponse.json();
+                            const isTaskAdmin = permission.permission_type === 'admin' || permission.is_owner;
+                            const isTaskEditor = permission.permission_type === 'edit';
+                            const isTaskViewer = permission.permission_type === 'view';
+                            console.log('任务权限信息:', permission);
+                            console.log('是否为任务管理员:', isTaskAdmin);
+                            console.log('是否为任务编辑者:', isTaskEditor);
+                            console.log('是否为任务查看者:', isTaskViewer);
+                            
+                            // 显示轨迹按钮的条件：是管理员、任务管理员或任务创建者
+                            const showTrajectoryButtons = isAdmin || isTaskAdmin || isTaskOwner;
+                            console.log('是否显示轨迹按钮:', showTrajectoryButtons);
+                            
+                            // 显示/隐藏轨迹按钮
+                            const trackBtn = document.getElementById('generate-track-btn');
+                            const reportBtn = document.getElementById('generate-report-btn');
+                            
+                            if (trackBtn) {
+                                trackBtn.style.display = showTrajectoryButtons ? 'block' : 'none';
+                                console.log('轨迹按钮显示状态:', trackBtn.style.display);
+                            }
+                            if (reportBtn) {
+                                reportBtn.style.display = showTrajectoryButtons ? 'block' : 'none';
+                                console.log('轨迹报告按钮显示状态:', reportBtn.style.display);
+                            }
+                            
+                            // 控制已生成文件列表的显示
+                            const filesContainer = document.getElementById('generated-files-container');
+                            if (filesContainer) {
+                                // 只有管理员、任务管理员或任务创建者可以看到已生成的文件列表
+                                filesContainer.style.display = showTrajectoryButtons ? 'block' : 'none';
+                                console.log('已生成文件列表显示状态:', filesContainer.style.display);
+                                
+                                // 如果用户有权限，则加载文件列表
+                                if (showTrajectoryButtons) {
+                                    console.log('用户有权限查看文件列表，开始加载文件');
+                                    fetchGeneratedFiles(taskId);
+                                } else {
+                                    console.log('用户无权限查看文件列表，不加载文件');
+                                }
+                            }
+
+                            // 控制上传图片按钮的显示
+                            const uploadBtn = document.getElementById('upload-btn');
+                            if (uploadBtn) {
+                                // 只有管理员、任务管理员、任务创建者或编辑者可以上传图片
+                                uploadBtn.style.display = (isAdmin || isTaskAdmin || isTaskOwner || isTaskEditor) ? 'block' : 'none';
+                            }
+
+                            // 控制打点上图按钮的显示
+                            const plotPointsBtn = document.getElementById('plot-points-btn');
+                            if (plotPointsBtn) {
+                                // 只有管理员、任务管理员或任务创建者可以打点上图
+                                plotPointsBtn.style.display = (isAdmin || isTaskAdmin || isTaskOwner) ? 'block' : 'none';
+                            }
+                        }
+                    }
+                } catch (error) {
+                    console.error('检查权限时出错:', error);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                document.getElementById('task-creator').textContent = '未知用户';
+                // 显示其他错误信息
+                document.getElementById('task-title').textContent = '';
+                document.getElementById('task-description').textContent = '获取任务信息失败';
+                document.getElementById('task-create-time').textContent = '';
+            });
+
+            // 获取图片列表
+            fetch(`/api/tasks/${taskId}/images`, {
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('获取图片列表失败');
+                }
+                return response.json();
+            })
+            .then(images => {
+                const imageGrid = document.getElementById('image-grid');
+                imageGrid.innerHTML = ''; // 清空现有内容
+                
+                if (images.length === 0) {
+                    imageGrid.innerHTML = '<p style="text-align: center; color: #666;">暂无图片</p>';
+                    return;
+                }
+
+                images.forEach(image => {
+                    const imageCard = document.createElement('div');
+                    imageCard.className = 'image-card';
+                    
+                    // 构建图片URL
+                    const imageUrl = getImageUrl(image.file_path);
+                    
+                    imageCard.innerHTML = `
+                        <div class="image-container">
+                            <img src="${imageUrl}" alt="${image.description || '图片'}">
+                            <div class="image-actions">
+                                <button class="action-btn detail-btn" onclick="showImageDetail(${image.id})">
+                                    <i class="fas fa-info-circle"></i> 详细
+                                </button>
+                                <button class="action-btn original-btn" onclick="showOriginalImage('${imageUrl}')">
+                                    <i class="fas fa-expand"></i> 原图
+                                </button>
+                                <button class="action-btn delete-btn" onclick="deleteImage(${image.id})">
+                                    <i class="fas fa-trash"></i> 删除
+                                </button>
+                            </div>
+                        </div>
+                        <div class="image-info">
+                            <p><i class="fas fa-clock"></i> ${new Date(image.time).toLocaleString()}</p>
+                            <p><i class="fas fa-map-marker-alt"></i> ${image.location || '未知地点'}</p>
+                            <p><i class="fas fa-car"></i> ${image.transportation || '未知交通方式'}</p>
+                            <p><i class="fas fa-user"></i> ${image.created_by || '未知用户'}</p>
+                            <p><i class="fas fa-upload"></i> ${new Date(image.created_at).toLocaleString()}</p>
+                        </div>
+                    `;
+                    imageGrid.appendChild(imageCard);
+                });
+                
+                // 存储图片列表到全局变量，供打点上图功能使用
+                window.taskImages = images;
+            })
+            .catch(error => {
+                console.error('获取图片列表失败:', error);
+                const imageGrid = document.getElementById('image-grid');
+                imageGrid.innerHTML = '<p style="text-align: center; color: #dc3545;">获取图片列表失败，请重试</p>';
+            });
+            
+            // 设置打点上图按钮事件
+            setupPlotPointsButton();
+
+            // 添加关闭弹窗事件监听器
+            const closeModalBtn = document.querySelector('.close-modal');
+            if (closeModalBtn) {
+                closeModalBtn.addEventListener('click', function() {
+                    const modal = document.getElementById('imageDetailModal');
+                    if (modal) {
+                        modal.style.display = 'none';
+                    }
+                });
+            }
+
+            // 添加点击弹窗外部关闭事件监听器
+            window.addEventListener('click', function(event) {
+                const modal = document.getElementById('imageDetailModal');
+                if (event.target === modal) {
+                    modal.style.display = 'none';
+                }
+            });
+            
+            // 添加人员按钮事件监听器
+            document.getElementById('add-person-btn').addEventListener('click', function() {
+                addPersonForm();
+            });
+        });
+
+        // 返回按钮点击事件
+        document.getElementById('back-btn').addEventListener('click', function() {
+            window.location.href = '/task';
+        });
+
+        // 上传按钮点击事件
+        document.getElementById('upload-btn').addEventListener('click', function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const taskId = urlParams.get('task_id');
+            window.location.href = `/upload?id=${taskId}`;
+        });
+
+        // 退出按钮点击事件
+        document.getElementById('logout-btn').addEventListener('click', function() {
+            localStorage.removeItem('token');
+            localStorage.removeItem('username');
+            window.location.href = '/login';
+        });
+        
+        // 设置打点上图按钮事件
+        function setupPlotPointsButton() {
+            const plotPointsBtn = document.getElementById('plot-points-btn');
+            const hideMapBtn = document.getElementById('hide-map-btn');
+            const layerControlBtn = document.getElementById('layer-control-btn');
+            
+            if (plotPointsBtn) {
+                plotPointsBtn.addEventListener('click', function() {
+                    plotImagesOnMap();
+                    // 显示隐藏地图按钮和图层控制按钮
+                    if (hideMapBtn) {
+                        hideMapBtn.style.display = 'inline-block';
+                    }
+                    if (layerControlBtn) {
+                        layerControlBtn.style.display = 'inline-block';
+                    }
+                });
+            }
+            
+            // 添加隐藏地图按钮事件
+            if (hideMapBtn) {
+                hideMapBtn.addEventListener('click', function() {
+                    const mapContainer = document.getElementById('map-container');
+                    if (mapContainer) {
+                        mapContainer.style.display = 'none';
+                        mapContainer.classList.remove('visible');
+                        // 隐藏隐藏地图按钮和图层控制按钮
+                        hideMapBtn.style.display = 'none';
+                        if (layerControlBtn) {
+                            layerControlBtn.style.display = 'none';
+                        }
+                    }
+                });
+            }
+            
+            // 设置图层控制按钮事件
+            if (layerControlBtn) {
+                layerControlBtn.addEventListener('click', function() {
+                    toggleLayerControlPanel();
+                });
+            }
+            
+            // 设置图层切换事件
+            setupLayerToggleEvents();
+        }
+        
+        // 切换图层控制面板显示状态
+        function toggleLayerControlPanel() {
+            const panel = document.getElementById('layer-control-panel');
+            if (panel) {
+                if (panel.style.display === 'none') {
+                    panel.style.display = 'block';
+                } else {
+                    panel.style.display = 'none';
+                }
+            }
+        }
+        
+        // 设置图层切换事件
+        function setupLayerToggleEvents() {
+            // 添加关闭按钮事件
+            const closeBtn = document.querySelector('.close-layer-panel');
+            if (closeBtn) {
+                closeBtn.addEventListener('click', function() {
+                    const panel = document.getElementById('layer-control-panel');
+                    if (panel) {
+                        panel.style.display = 'none';
+                    }
+                });
+                
+                // 添加鼠标悬停效果
+                closeBtn.addEventListener('mouseover', function() {
+                    this.style.color = '#e74c3c';
+                    this.style.backgroundColor = '#f8f9fa';
+                });
+                
+                closeBtn.addEventListener('mouseout', function() {
+                    this.style.color = '#666';
+                    this.style.backgroundColor = 'transparent';
+                });
+            }
+            
+            // 为所有图层标签添加悬停效果
+            const layerLabels = document.querySelectorAll('#layer-control-panel label');
+            layerLabels.forEach(label => {
+                label.addEventListener('mouseover', function() {
+                    this.style.backgroundColor = '#f8f9fa';
+                });
+                
+                label.addEventListener('mouseout', function() {
+                    this.style.backgroundColor = 'transparent';
+                });
+            });
+            
+            // 矢量图层
+            const vectorToggle = document.getElementById('vector-layer-toggle');
+            if (vectorToggle) {
+                vectorToggle.addEventListener('change', function() {
+                    if (!window.vectorLayer || !window.map) return;
+                    
+                    if (this.checked) {
+                        window.vectorLayer.show();
+                    } else {
+                        window.vectorLayer.hide();
+                    }
+                });
+            }
+            
+            // 卫星图层
+            const satelliteToggle = document.getElementById('satellite-layer-toggle');
+            if (satelliteToggle) {
+                satelliteToggle.addEventListener('change', function() {
+                    if (!window.satelliteLayer || !window.map) return;
+                    
+                    if (this.checked) {
+                        window.satelliteLayer.show();
+                    } else {
+                        window.satelliteLayer.hide();
+                    }
+                });
+            }
+            
+            // 路网图层
+            const roadnetToggle = document.getElementById('roadnet-layer-toggle');
+            if (roadnetToggle) {
+                roadnetToggle.addEventListener('change', function() {
+                    if (!window.roadNetLayer || !window.map) return;
+                    
+                    if (this.checked) {
+                        window.roadNetLayer.show();
+                    } else {
+                        window.roadNetLayer.hide();
+                    }
+                });
+            }
+            
+            // 交通图层
+            const trafficToggle = document.getElementById('traffic-layer-toggle');
+            if (trafficToggle) {
+                trafficToggle.addEventListener('change', function() {
+                    if (!window.trafficLayer || !window.map) return;
+                    
+                    if (this.checked) {
+                        window.trafficLayer.show();
+                    } else {
+                        window.trafficLayer.hide();
+                    }
+                });
+            }
+        }
+        
+        // 打点上图功能实现
+        function plotImagesOnMap() {
+            // 确保地图容器可见
+            const mapContainer = document.getElementById('map-container');
+            const hideMapBtn = document.getElementById('hide-map-btn');
+            const layerControlBtn = document.getElementById('layer-control-btn');
+            
+            if (mapContainer) {
+                mapContainer.style.display = 'block';
+                mapContainer.classList.add('visible');
+                // 显示隐藏地图按钮和图层控制按钮
+                if (hideMapBtn) {
+                    hideMapBtn.style.display = 'inline-block';
+                }
+                if (layerControlBtn) {
+                    layerControlBtn.style.display = 'inline-block';
+                }
+            }
+            
+            // 确保地图API已加载完成
+            if (!window.AMap) {
+                console.log('地图API尚未加载完成，等待加载...');
+                
+                // 显示加载中提示
+                if (mapContainer) {
+                    mapContainer.innerHTML = '<div style="display:flex;justify-content:center;align-items:center;height:100%;"><p>地图加载中，请稍候...</p></div>';
+                }
+                
+                // 定义异步函数加载地图
+                const waitForMapAPI = async () => {
+                    try {
+                        await loadAMapScript();
+                        console.log('地图API加载完成，继续执行');
+                        window.mapApiLoaded = true;
+                        
+                        // 清除加载提示
+                        if (mapContainer) {
+                            mapContainer.innerHTML = '';
+                        }
+                        
+                        // 重新调用打点函数
+                        setTimeout(() => plotImagesOnMap(), 500);
+                    } catch (error) {
+                        console.error('加载地图API失败:', error);
+                        alert('加载地图失败，请刷新页面重试');
+                    }
+                };
+                
+                waitForMapAPI();
+                return;
+            }
+            
+            // 确保地图已初始化
+            if (!window.map) {
+                // 初始化地图
+                initMap();
+                
+                // 如果初始化失败，终止操作
+                if (!window.map) {
+                    console.error('地图初始化失败');
+                    return;
+                }
+            }
+            
+            // 获取任务图片列表
+            const images = window.taskImages;
+            if (!images || images.length === 0) {
+                console.error('没有可用的图片数据');
+                alert('没有找到图片数据，请确保已上传带有GPS信息的图片。');
+                return;
+            }
+            
+            // 清除现有标记点
+            if (window.markersLayer) {
+                window.markersLayer.remove();
+                window.markersLayer = null;
+            }
+            
+            // 创建新的overlay组
+            window.markersLayer = new window.AMap.OverlayGroup();
+            
+            // 收集所有有效的GPS点
+            const validPoints = [];
+            
+            // 遍历图片，找出有GPS信息的图片
+            images.forEach((image, index) => {
+                if (image.gps_latitude && image.gps_longitude) {
+                    try {
+                        const lat = parseFloat(image.gps_latitude);
+                        const lng = parseFloat(image.gps_longitude);
+                        
+                        if (!isNaN(lat) && !isNaN(lng)) {
+                            validPoints.push({
+                                position: [lng, lat],
+                                title: `图片 ${index + 1}`,
+                                time: new Date(image.time).toLocaleString(),
+                                location: image.location || '未知地点',
+                                transportation: image.transportation || '未知交通方式',
+                                imageUrl: getImageUrl(image.file_path)
+                            });
+                        }
+                    } catch (error) {
+                        console.error('处理GPS坐标出错:', error);
+                    }
+                }
+            });
+            
+            if (validPoints.length === 0) {
+                console.error('没有找到有效的GPS信息');
+                alert('没有找到有效的GPS信息，请确保图片包含GPS坐标。');
+                return;
+            }
+            
+            console.log(`找到 ${validPoints.length} 个有效GPS点`);
+            
+            try {
+                // 在地图上添加标记点
+                validPoints.forEach((point, index) => {
+                    // 创建标记
+                    const marker = new window.AMap.Marker({
+                        position: point.position,
+                        title: point.title,
+                        label: {
+                            content: `${index + 1}`,
+                            direction: 'top'
+                        }
+                    });
+                    
+                    // 创建信息窗口内容，调整图片尺寸
+                    const infoContent = `
+                        <div style="padding: 3px; max-width: 500px;">
+                            <div style="text-align: center; margin-bottom: 1px;">
+                                <img src="${point.imageUrl}" style="width: 400px; height: 300px; object-fit: cover; border-radius: 2px;">
+                            </div>
+                            <p style="margin: 1px 0; font-size: 15px;"><strong>时间:</strong> ${point.time}</p>
+                            <p style="margin: 1px 0; font-size: 15px;"><strong>地点:</strong> ${point.location}</p>
+                            <p style="margin: 1px 0; font-size: 15px;"><strong>交通方式:</strong> ${point.transportation}</p>
+                        </div>
+                    `;
+                    
+                    // 创建信息窗口
+                    const infoWindow = new window.AMap.InfoWindow({
+                        content: infoContent,
+                        offset: new window.AMap.Pixel(0, -30)
+                    });
+                    
+                    // 点击标记时显示信息窗口
+                    marker.on('click', function() {
+                        infoWindow.open(window.map, marker.getPosition());
+                    });
+                    
+                    // 添加到地图上
+                    window.markersLayer.addOverlay(marker);
+                });
+                
+                // 将标记组添加到地图上
+                window.map.add(window.markersLayer);
+                
+                // 调整地图视野以包含所有标记点
+                window.map.setFitView();
+                
+                console.log('地图标记点添加完成');
+            } catch (error) {
+                console.error('添加标记点出错:', error);
+                alert('添加标记点时出错: ' + error.message);
+            }
+        }
+        
+        // 初始化地图
+        function initMap() {
+            if (window.map) {
+                console.log('地图已经初始化');
+                return window.map;
+            }
+            
+            try {
+                console.log('开始初始化地图');
+                const mapContainer = document.getElementById('map-container');
+                
+                if (!mapContainer) {
+                    console.error('找不到地图容器元素');
+                    return null;
+                }
+                
+                if (!window.AMap) {
+                    console.error('高德地图API尚未加载完成');
+                    alert('地图组件尚未完成加载，请稍后再试');
+                    return null;
+                }
+                
+                // 创建地图实例
+                window.map = new window.AMap.Map(mapContainer, {
+                    viewMode: '2D',  // 使用2D视图
+                    zoom: 13,
+                    center: [116.397428, 39.90923],
+                    resizeEnable: true,
+                    isHotspot: false,  // 禁用热点和标注
+                    defaultCursor: 'default',  // 设置默认光标样式
+                    showBuildingBlock: false,  // 不显示3D建筑物
+                    layers: []  // 先不设置图层，由setupMapLayers控制
+                });
+                
+                // 添加图层控制
+                setupMapLayers();
+                
+                // 添加控件
+                window.map.addControl(new window.AMap.Scale());
+                window.map.addControl(new window.AMap.ToolBar({
+                    position: 'RB'
+                }));
+                
+                console.log('地图初始化完成');
+                
+                // 触发resize事件，确保地图完全渲染
+                setTimeout(() => {
+                    if (window.map) {
+                        window.map.resize();
+                    }
+                }, 200);
+                
+                return window.map;
+            } catch (error) {
+                console.error('初始化地图出错:', error);
+                alert('初始化地图出错: ' + error.message);
+                return null;
+            }
+        }
+        
+        // 设置地图图层
+        function setupMapLayers() {
+            if (!window.map) return;
+            
+            try {
+                // 创建标准矢量图层
+                window.vectorLayer = new window.AMap.TileLayer({
+                    zIndex: 0,
+                    visible: true
+                });
+                
+                // 创建卫星图层
+                window.satelliteLayer = new window.AMap.TileLayer.Satellite();
+                
+                // 创建路网图层
+                window.roadNetLayer = new window.AMap.TileLayer.RoadNet();
+                
+                // 创建交通图层
+                window.trafficLayer = new window.AMap.TileLayer.Traffic({
+                    zIndex: 10
+                });
+                
+                // 添加标准矢量图层并设置为可见
+                window.vectorLayer.setMap(window.map);
+                
+                // 添加其他图层但默认隐藏
+                window.satelliteLayer.setMap(window.map);
+                window.satelliteLayer.hide();
+                
+                window.roadNetLayer.setMap(window.map);
+                window.roadNetLayer.hide();
+                
+                window.trafficLayer.setMap(window.map);
+                window.trafficLayer.hide();
+                
+                console.log('地图图层设置完成，包括矢量图层');
+            } catch (error) {
+                console.error('设置地图图层出错:', error);
+            }
+        }
+
+        function getImageUrl(imagePath) {
+            if (!imagePath) return '';
+            // 如果路径已经是完整的URL，直接返回
+            if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+                return imagePath;
+            }
+            // 如果路径以/开头，直接返回
+            if (imagePath.startsWith('/')) {
+                return imagePath;
+            }
+            // 如果路径包含uploads/前缀，添加/api前缀
+            if (imagePath.startsWith('uploads/')) {
+                return `/api/${imagePath}`;
+            }
+            // 否则，添加/api/uploads/前缀
+            return `/api/uploads/${imagePath}`;
+        }
+
+        // 更新图片列表显示
+        function updateImageList(images) {
+            const imageList = document.getElementById('image-list');
+            if (!imageList) return;
+            
+            imageList.innerHTML = '';
+            images.forEach(image => {
+                const imageUrl = getImageUrl(image.file_path);
+                const li = document.createElement('li');
+                li.innerHTML = `
+                    <img src="${imageUrl}" alt="任务图片" style="max-width: 100px; cursor: pointer;"
+                         onclick="showImageDetail(${image.id})">
+                    <div class="image-info">
+                        <p>时间: ${formatDateTime(image.time)}</p>
+                        <p>地点: ${image.location || '未知'}</p>
+                    </div>
+                `;
+                imageList.appendChild(li);
+            });
+        }
+
+        // 自定义生成轨迹表函数，适配image.html页面的task_id参数
+        async function generateTrackCustom() {
+            try {
+                window.showMessage('正在生成轨迹表...', 'info');
+                
+                // 从image.html页面获取task_id
+                const taskId = new URLSearchParams(window.location.search).get('task_id');
+                if (!taskId) {
+                    throw new Error('未找到任务ID');
+                }
+                
+                console.log(`正在为任务ID ${taskId} 生成轨迹表`);
+                const response = await authenticatedFetch(`/api/trajectory/excel/${taskId}`, {
+                    method: 'GET'
+                });
+
+                if (!response.ok) {
+                    console.error(`生成轨迹表接口返回错误: ${response.status}`);
+                    const errorText = await response.text();
+                    console.error(`错误详情: ${errorText}`);
+                    throw new Error('生成轨迹表失败');
+                }
+
+                const result = await response.json();
+                console.log('生成轨迹表结果:', result);
+                
+                if (result.filename) {
+                    window.showMessage('轨迹表已生成', 'success');
+                    
+                    // 从服务器获取最新的文件列表
+                    fetchGeneratedFiles(taskId);
+                } else {
+                    throw new Error('未获取到文件名');
+                }
+            } catch (error) {
+                console.error('生成轨迹表失败:', error);
+                window.showMessage('生成轨迹表失败: ' + error.message, 'error');
+            }
+        }
+
+        // 自定义生成轨迹报告函数，适配image.html页面的task_id参数
+        async function generateReportCustom() {
+            try {
+                window.showMessage('正在生成轨迹报告...', 'info');
+                
+                // 从image.html页面获取task_id
+                const taskId = new URLSearchParams(window.location.search).get('task_id');
+                if (!taskId) {
+                    throw new Error('未找到任务ID');
+                }
+                
+                console.log(`正在为任务ID ${taskId} 生成轨迹报告`);
+                const response = await authenticatedFetch(`/api/trajectory/report/${taskId}`, {
+                    method: 'GET'
+                });
+
+                if (!response.ok) {
+                    console.error(`生成轨迹报告接口返回错误: ${response.status}`);
+                    const errorText = await response.text();
+                    console.error(`错误详情: ${errorText}`);
+                    throw new Error('生成轨迹报告失败');
+                }
+
+                const result = await response.json();
+                console.log('生成轨迹报告结果:', result);
+                
+                if (result.filename) {
+                    window.showMessage('轨迹报告已生成', 'success');
+                    
+                    // 从服务器获取最新的文件列表
+                    fetchGeneratedFiles(taskId);
+                } else {
+                    throw new Error('未获取到文件名');
+                }
+            } catch (error) {
+                console.error('生成轨迹报告失败:', error);
+                window.showMessage('生成轨迹报告失败: ' + error.message, 'error');
+            }
+        }
+
+        // 保存文件信息到localStorage
+        function saveFileToLocalStorage(taskId, filename, previewUrl, downloadUrl, type) {
+            try {
+                // 获取当前任务的已生成文件列表
+                const storageKey = `task_${taskId}_files`;
+                let taskFiles = JSON.parse(localStorage.getItem(storageKey) || '[]');
+                
+                // 检查文件是否已存在
+                const existingFileIndex = taskFiles.findIndex(file => file.filename === filename);
+                
+                // 如果存在，更新文件信息；否则添加新文件
+                const fileInfo = {
+                    name: filename, // 用于显示的名称
+                    filename,      // 实际文件名
+                    url: previewUrl, // 用于预览的URL
+                    previewUrl,
+                    downloadUrl,
+                    type,
+                    createdAt: new Date().toISOString()
+                };
+                
+                if (existingFileIndex >= 0) {
+                    taskFiles[existingFileIndex] = fileInfo;
+                } else {
+                    taskFiles.push(fileInfo);
+                }
+                
+                // 保存更新后的文件列表
+                localStorage.setItem(storageKey, JSON.stringify(taskFiles));
+                console.log(`已保存文件信息到本地存储: ${filename}`);
+                
+                // 显示文件容器
+                const container = document.getElementById('generated-files-container');
+                if (container) {
+                    container.style.display = 'block';
+                }
+            } catch (error) {
+                console.error('保存文件信息到本地存储失败:', error);
+            }
+        }
+
+        // 添加文件链接到页面
+        function addFileLink(filename, previewUrl, downloadUrl, type) {
+            // 显示文件链接容器
+            const container = document.getElementById('generated-files-container');
+            container.style.display = 'block';
+            
+            const filesList = document.getElementById('generated-files-list');
+            
+            // 检查是否已经存在相同的文件链接
+            const existingItems = filesList.querySelectorAll('li');
+            let fileExists = false;
+            
+            existingItems.forEach(item => {
+                const linkElement = item.querySelector('a');
+                if (linkElement && linkElement.textContent === filename) {
+                    fileExists = true;
+                }
+            });
+            
+            if (fileExists) {
+                return; // 如果文件已存在，不再添加
+            }
+            
+            // 创建新的文件链接
+            const li = document.createElement('li');
+            li.innerHTML = `
+                <span>${filename}</span>
+                <div class="file-actions" style="display: flex; gap: 5px;">
+                    <a href="${previewUrl}" target="_blank" class="btn small-btn">查看</a>
+                    <a href="${downloadUrl}" download="${filename}" class="btn small-btn" style="background-color: #28a745;">下载</a>
+                    <button class="btn small-btn delete-file-btn" style="background-color: #dc3545;" data-filename="${filename}" data-type="${type}">删除</button>
+                </div>
+            `;
+            
+            // 添加删除按钮事件
+            li.querySelector('.delete-file-btn').addEventListener('click', function() {
+                const filename = this.getAttribute('data-filename');
+                const type = this.getAttribute('data-type');
+                deleteGeneratedFile(filename, type);
+            });
+            
+            filesList.appendChild(li);
+        }
+
+        // 从本地存储加载已生成的文件
+        function loadFilesFromLocalStorage() {
+            try {
+                const urlParams = new URLSearchParams(window.location.search);
+                const taskId = urlParams.get('task_id');
+                
+                if (!taskId) {
+                    console.error('未找到任务ID');
+                    return;
+                }
+                
+                console.log(`正在加载任务 ${taskId} 的已生成文件`);
+                
+                const filesKey = `task_${taskId}_files`;
+                console.log(`本地存储键名: ${filesKey}`);
+                
+                const filesJson = localStorage.getItem(filesKey);
+                console.log(`从本地存储获取的数据: ${filesJson}`);
+                
+                if (!filesJson) {
+                    console.log('本地存储中没有找到已生成的文件');
+                    // 从服务器加载文件
+                    fetchGeneratedFiles(taskId);
+                    return;
+                }
+                
+                const files = JSON.parse(filesJson);
+                console.log('从本地存储加载的文件:', files);
+                
+                if (files && files.length > 0) {
+                    const container = document.getElementById('generated-files-container');
+                    const list = document.getElementById('generated-files-list');
+                    
+                    if (container && list) {
+                        container.style.display = 'block';
+                        list.innerHTML = '';
+                        
+                        files.forEach(file => {
+                            console.log('处理文件:', file);
+                            const li = document.createElement('li');
+                            const previewUrl = file.previewUrl || file.url;
+                            const downloadUrl = file.downloadUrl || previewUrl;
+                            const filename = file.name || file.filename;
+                            const type = file.type || 'unknown';
+                            
+                            console.log(`文件信息: 名称=${filename}, 类型=${type}, 预览URL=${previewUrl}, 下载URL=${downloadUrl}`);
+                            
+                            li.innerHTML = `
+                                <span>${filename}</span>
+                                <div class="file-actions">
+                                    <a href="${previewUrl}" target="_blank" class="btn small-btn">查看</a>
+                                    <a href="${downloadUrl}" download="${filename}" class="btn small-btn" style="background-color: #28a745;">下载</a>
+                                    <button class="btn small-btn delete-file-btn" style="background-color: #dc3545;" data-filename="${filename}" data-type="${type}">删除</button>
+                                </div>
+                            `;
+                            
+                            // 添加删除按钮事件
+                            const deleteBtn = li.querySelector('.delete-file-btn');
+                            if (deleteBtn) {
+                                deleteBtn.addEventListener('click', function() {
+                                    const filename = this.getAttribute('data-filename');
+                                    const type = this.getAttribute('data-type');
+                                    deleteGeneratedFile(filename, type);
+                                });
+                            }
+                            
+                            list.appendChild(li);
+                        });
+                        
+                        console.log('已生成文件列表已更新');
+                    } else {
+                        console.error('找不到文件容器或列表元素');
+                    }
+                } else {
+                    console.log('没有找到已生成的文件');
+                }
+                
+                // 无论是否从本地存储加载成功，都尝试从服务器获取最新文件
+                fetchGeneratedFiles(taskId);
+            } catch (error) {
+                console.error('加载已生成文件出错:', error);
+                console.error('错误详情:', error.stack);
+                
+                // 出错时也尝试从服务器加载
+                const taskId = new URLSearchParams(window.location.search).get('task_id');
+                if (taskId) {
+                    fetchGeneratedFiles(taskId);
+                }
+            }
+        }
+
+        // 从服务器获取已生成的轨迹文件
+        async function fetchGeneratedFiles(taskId) {
+            try {
+                if (!taskId) {
+                    console.error('未找到任务ID');
+                    return;
+                }
+                
+                console.log(`从服务器获取任务${taskId}的轨迹文件`);
+                const response = await authenticatedFetch(`/api/trajectory/files/${taskId}`);
+                
+                if (!response.ok) {
+                    console.error(`获取轨迹文件列表失败: ${response.status}`);
+                    return;
+                }
+                
+                const files = await response.json();
+                console.log('服务器返回的文件列表:', files);
+                
+                if (!files || !Array.isArray(files) || files.length === 0) {
+                    console.log('服务器没有返回任何文件');
+                    return;
+                }
+                
+                // 显示文件容器
+                const container = document.getElementById('generated-files-container');
+                const filesList = document.getElementById('generated-files-list');
+                
+                if (!container || !filesList) {
+                    console.error('找不到文件容器或列表元素');
+                    return;
+                }
+                
+                container.style.display = 'block';
+                
+                // 清空现有文件列表
+                filesList.innerHTML = '';
+                
+                // 重新从localStorage加载文件列表，用于合并
+                const filesKey = `task_${taskId}_files`;
+                let localFiles = [];
+                try {
+                    const filesJson = localStorage.getItem(filesKey);
+                    localFiles = filesJson ? JSON.parse(filesJson) : [];
+                } catch (error) {
+                    console.error('解析本地存储文件列表失败:', error);
+                }
+                
+                // 合并的文件列表
+                const mergedFiles = [];
+                
+                // 处理服务器返回的文件
+                files.forEach(file => {
+                    // 获取完整的文件名和显示名
+                    const fullFilename = file.filename;
+                    const displayName = file.display_name || file.filename;
+                    
+                    // 构建文件的预览和下载URL
+                    const previewUrl = `/api/trajectory/preview/${encodeURIComponent(fullFilename)}`;
+                    const downloadUrl = `/api/trajectory/download-file/${encodeURIComponent(fullFilename)}`;
+                    
+                    // 获取文件类型
+                    const type = file.type || 'unknown';
+                    
+                    // 获取创建时间
+                    const createdAt = file.created_at ? new Date(file.created_at) : new Date();
+                    const formattedDate = createdAt.toLocaleString('zh-CN', {
+                        year: 'numeric',
+                        month: '2-digit',
+                        day: '2-digit',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        second: '2-digit',
+                        hour12: false
+                    });
+                    
+                    // 检查本地是否已存在该文件
+                    const existingFileIndex = localFiles.findIndex(localFile => 
+                        localFile.filename === fullFilename || localFile.name === fullFilename
+                    );
+                    
+                    // 如果本地存在，使用本地信息；否则创建新的文件信息
+                    const fileInfo = existingFileIndex >= 0 ? {
+                        ...localFiles[existingFileIndex],
+                        display_name: displayName,
+                        previewUrl,
+                        downloadUrl,
+                        type,
+                        createdAt: file.created_at || localFiles[existingFileIndex].createdAt
+                    } : {
+                        name: fullFilename,
+                        display_name: displayName,
+                        filename: fullFilename,
+                        previewUrl,
+                        downloadUrl,
+                        type,
+                        createdAt: file.created_at || new Date().toISOString()
+                    };
+                    
+                    // 将文件信息添加到合并列表
+                    mergedFiles.push(fileInfo);
+                    
+                    // 创建文件列表项
+                    const li = document.createElement('li');
+                    
+                    // 获取文件类型显示文本
+                    const typeText = type === 'excel' ? '轨迹表' : type === 'report' ? '轨迹报告' : '文件';
+                    
+                    li.innerHTML = `
+                        <div style="display: flex; flex-direction: column; width: 100%;">
+                            <span title="${displayName}" class="file-name">${displayName}</span>
+                            <small style="color: #666; font-size: 12px; margin-top: 2px; margin-bottom: 8px;">
+                                ${typeText} · ${formattedDate}
+                            </small>
+                            <div class="file-actions">
+                                <a href="${previewUrl}" target="_blank" class="btn small-btn" title="查看文件">
+                                    <i class="fas fa-eye"></i> 查看
+                                </a>
+                                <a href="${downloadUrl}" download="${displayName}" class="btn small-btn" style="background-color: #28a745;" title="下载文件">
+                                    <i class="fas fa-download"></i> 下载
+                                </a>
+                                <button class="btn small-btn delete-file-btn" style="background-color: #dc3545;" data-filename="${fullFilename}" data-type="${type}" title="删除文件">
+                                    <i class="fas fa-trash-alt"></i> 删除
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                    
+                    // 添加删除按钮事件
+                    const deleteBtn = li.querySelector('.delete-file-btn');
+                    if (deleteBtn) {
+                        deleteBtn.addEventListener('click', function() {
+                            const filename = this.getAttribute('data-filename');
+                            const type = this.getAttribute('data-type');
+                            deleteGeneratedFile(filename, type);
+                        });
+                    }
+                    
+                    filesList.appendChild(li);
+                });
+                
+                // 更新本地存储
+                localStorage.setItem(filesKey, JSON.stringify(mergedFiles));
+                
+                console.log('已成功加载并显示轨迹文件');
+            } catch (error) {
+                console.error('获取轨迹文件列表失败:', error);
+                console.error('错误详情:', error.stack);
+            }
+        }
+
+        // 删除生成的文件
+        async function deleteGeneratedFile(filename, type) {
+            try {
+                if (!filename) {
+                    console.error('文件名不能为空');
+                    return;
+                }
+                
+                if (!confirm(`确定要删除${type === 'excel' ? '轨迹表' : '轨迹报告'} "${filename}" 吗？`)) {
+                    return;
+                }
+                
+                const taskId = new URLSearchParams(window.location.search).get('task_id');
+                if (!taskId) {
+                    console.error('未找到任务ID');
+                    return;
+                }
+                
+                // 先尝试从服务器删除，使用GET方法而不是DELETE方法
+                try {
+                    console.log(`尝试从服务器删除文件: ${filename}`);
+                    const response = await authenticatedFetch(`/api/trajectory/delete-file/${encodeURIComponent(filename)}`, {
+                        method: 'GET'  // 改为GET方法，与后端API匹配
+                    });
+                    
+                    if (response.ok) {
+                        console.log(`服务器文件删除成功: ${filename}`);
+                        window.showMessage(`${type === 'excel' ? '轨迹表' : '轨迹报告'}已删除`, 'success');
+                        
+                        // 从服务器重新获取文件列表
+                        fetchGeneratedFiles(taskId);
+                    } else {
+                        console.warn(`服务器文件删除失败: ${response.status} - ${response.statusText}`);
+                        window.showMessage(`删除文件失败: 服务器返回${response.status}`, 'error');
+                    }
+                } catch (error) {
+                    console.error('删除服务器文件时发生错误:', error);
+                    window.showMessage(`删除文件失败: ${error.message}`, 'error');
+                }
+            } catch (error) {
+                console.error('删除文件时发生错误:', error);
+                window.showMessage(`删除文件失败: ${error.message}`, 'error');
+            }
+        }
+
+        // 修改图片详情相关函数
+        function showImageDetail(imageId) {
+            const modal = document.getElementById('imageDetailModal');
+            const token = localStorage.getItem('token');
+            
+            // 获取图片详情
+            fetch(`/api/images/${imageId}`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('获取图片详情失败');
+                }
+                return response.json();
+            })
+            .then(image => {
+                // 设置图片预览
+                document.getElementById('detailImagePreview').src = getImageUrl(image.file_path);
+                
+                // 设置图片信息
+                document.getElementById('detailTime').textContent = new Date(image.time).toLocaleString('zh-CN', {
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit',
+                    hour12: false
+                });
+                document.getElementById('detailLocation').textContent = image.location || '未知地点';
+                document.getElementById('detailTransportation').textContent = image.transportation || '未知交通方式';
+                document.getElementById('detailDescription').textContent = image.description || '无';
+                document.getElementById('detailPerson').textContent = image.person_name ? 
+                    `${image.person_name} (${image.person_id || '无身份证'})` : '无';
+                document.getElementById('detailGPS').textContent = image.gps_latitude && image.gps_longitude ? 
+                    `${image.gps_latitude}, ${image.gps_longitude}` : '无';
+                document.getElementById('detailUploader').textContent = image.created_by || '未知用户';
+                document.getElementById('detailUploadTime').textContent = new Date(image.created_at).toLocaleString();
+                
+                // 设置编辑表单的值
+                const timeInput = document.getElementById('editTime');
+                const locationInput = document.getElementById('editLocation');
+                const transportationInput = document.getElementById('editTransportation');
+                const latitudeInput = document.getElementById('editLatitude');
+                const longitudeInput = document.getElementById('editLongitude');
+                const descriptionInput = document.getElementById('editDescription');
+                
+                // 确保时间格式正确，包含秒
+                const timeStr = image.time.replace('Z', '').slice(0, 19);
+                timeInput.value = timeStr;
+                
+                // 设置其他字段
+                locationInput.value = image.location || '';
+                transportationInput.value = image.transportation || '';
+                latitudeInput.value = image.gps_latitude || '';
+                longitudeInput.value = image.gps_longitude || '';
+                descriptionInput.value = image.description || '';
+                
+                // 清空并重新添加人员信息
+                const peopleContainer = document.getElementById('edit-people-container');
+                peopleContainer.innerHTML = '';
+                
+                // 如果图片有涉事人员信息，添加到表单中
+                if (image.people_involved && image.people_involved.length > 0) {
+                    image.people_involved.forEach(person => {
+                        addPersonForm(person);
+                    });
+                } else {
+                    // 添加一个空的人员表单
+                    addPersonForm();
+                }
+                
+                // 显示弹窗
+                modal.style.display = 'block';
+                
+                // 存储当前编辑的图片ID
+                modal.dataset.imageId = imageId;
+                
+                // 重置编辑模式
+                const displayInfo = document.getElementById('imageInfoDisplay');
+                const editForm = document.getElementById('imageInfoEdit');
+                const editBtn = document.querySelector('.edit-btn');
+                const deleteBtn = document.querySelector('.delete-btn');
+                const saveBtn = document.querySelector('.save-btn');
+                const cancelBtn = document.querySelector('.cancel-btn');
+                
+                displayInfo.style.display = 'block';
+                editForm.style.display = 'none';
+                editBtn.style.display = 'inline-block';
+                deleteBtn.style.display = 'inline-block';
+                saveBtn.style.display = 'none';
+                cancelBtn.style.display = 'none';
+            })
+            .catch(error => {
+                console.error('获取图片详情失败:', error);
+                showMessage('获取图片详情失败', 'error');
+            });
+        }
+        
+        // 切换编辑模式
+        function toggleEditMode() {
+            const displayInfo = document.getElementById('imageInfoDisplay');
+            const editForm = document.getElementById('imageInfoEdit');
+            const editBtn = document.querySelector('.edit-btn');
+            const deleteBtn = document.querySelector('.delete-btn');
+            const saveBtn = document.querySelector('.save-btn');
+            const cancelBtn = document.querySelector('.cancel-btn');
+            
+            if (displayInfo.style.display !== 'none') {
+                displayInfo.style.display = 'none';
+                editForm.style.display = 'block';
+                editBtn.style.display = 'none';
+                deleteBtn.style.display = 'none';
+                saveBtn.style.display = 'inline-block';
+                cancelBtn.style.display = 'inline-block';
+            } else {
+                displayInfo.style.display = 'block';
+                editForm.style.display = 'none';
+                editBtn.style.display = 'inline-block';
+                deleteBtn.style.display = 'inline-block';
+                saveBtn.style.display = 'none';
+                cancelBtn.style.display = 'none';
+            }
+        }
+        
+        // 取消编辑
+        function cancelEdit() {
+            toggleEditMode();
+        }
+        
+        // 保存图片详情
+        function saveImageDetails() {
+            const modal = document.getElementById('imageDetailModal');
+            const imageId = modal.dataset.imageId;
+            const token = localStorage.getItem('token');
+            
+            // 获取表单数据
+            const time = document.getElementById('editTime').value;
+            const location = document.getElementById('editLocation').value;
+            const transportation = document.getElementById('editTransportation').value;
+            const latitude = document.getElementById('editLatitude').value;
+            const longitude = document.getElementById('editLongitude').value;
+            const description = document.getElementById('editDescription').value;
+            
+            // 获取涉事人员数据
+            const peopleInvolved = getPeopleData();
+            
+            // 验证数据
+            if (!time) {
+                showMessage('请选择拍摄时间', 'error');
+                return;
+            }
+            
+            // 先获取当前图片信息，以获取必需的字段
+            fetch(`/api/images/${imageId}`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('获取图片信息失败');
+                }
+                return response.json();
+            })
+            .then(image => {
+                // 构建更新数据，确保所有必需字段都有值
+                const updatedData = {
+                    task_id: image.task_id,
+                    file_path: image.file_path,
+                    time: time,
+                    location: location || '未知地点',
+                    transportation: transportation || '未知交通方式',
+                    description: description || null,
+                    gps_latitude: latitude ? parseFloat(latitude) : null,
+                    gps_longitude: longitude ? parseFloat(longitude) : null,
+                    people_involved: peopleInvolved
+                };
+                
+                // 如果有人员信息，添加到people_involved数组
+                if (peopleInvolved.length > 0) {
+                    updatedData.people_involved = peopleInvolved;
+                }
+                
+                // 发送更新请求
+                return fetch(`/api/images/${imageId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(updatedData)
+                });
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(err => {
+                        // 处理422错误
+                        if (response.status === 422) {
+                            let errorMessage = '数据格式不正确';
+                            if (err.detail) {
+                                if (Array.isArray(err.detail)) {
+                                    errorMessage = err.detail.map(e => e.msg).join(', ');
+                                } else if (typeof err.detail === 'object') {
+                                    errorMessage = Object.values(err.detail).join(', ');
+                                } else {
+                                    errorMessage = err.detail;
+                                }
+                            }
+                            throw new Error(errorMessage);
+                        }
+                        throw new Error(err.detail || '更新图片详情失败');
+                    });
+                }
+                return response.json();
+            })
+            .then(data => {
+                showMessage('图片详情更新成功', 'success');
+                toggleEditMode();
+                // 刷新图片列表
+                window.location.reload();
+            })
+            .catch(error => {
+                console.error('更新图片详情失败:', error);
+                showMessage(error.message || '更新图片详情失败', 'error');
+            });
+        }
+        
+        // 从详情页删除图片
+        function deleteImageFromDetail() {
+            const modal = document.getElementById('imageDetailModal');
+            const imageId = modal.dataset.imageId;
+            
+            if (confirm('确定要删除这张图片吗？此操作不可恢复。')) {
+                const token = localStorage.getItem('token');
+                fetch(`/api/images/${imageId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('删除图片失败');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    showMessage('图片删除成功', 'success');
+                    modal.style.display = 'none';
+                    // 刷新图片列表
+                    window.location.reload();
+                })
+                .catch(error => {
+                    console.error('删除图片失败:', error);
+                    showMessage('删除图片失败', 'error');
+                });
+            }
+        }
+
+        // 显示原图
+        function showOriginalImage(imageUrl) {
+            // 在新窗口打开原图
+            window.open(imageUrl, '_blank');
+        }
+
+        // 添加人员表单
+        function addPersonForm(person = null) {
+            const peopleContainer = document.getElementById('edit-people-container');
+            if (!peopleContainer) return;
+            
+            const personDiv = document.createElement('div');
+            personDiv.className = 'person-form';
+            personDiv.style.border = '1px solid #eee';
+            personDiv.style.padding = '8px';
+            personDiv.style.marginBottom = '8px';
+            personDiv.style.borderRadius = '4px';
+            personDiv.style.position = 'relative';
+            
+            // 创建删除按钮
+            const removeBtn = document.createElement('button');
+            removeBtn.type = 'button';
+            removeBtn.className = 'remove-person-btn';
+            removeBtn.innerHTML = '×';
+            removeBtn.style.position = 'absolute';
+            removeBtn.style.right = '5px';
+            removeBtn.style.top = '5px';
+            removeBtn.style.background = 'none';
+            removeBtn.style.border = 'none';
+            removeBtn.style.fontSize = '18px';
+            removeBtn.style.cursor = 'pointer';
+            removeBtn.style.color = '#e74c3c';
+            
+            // 添加删除按钮事件
+            removeBtn.addEventListener('click', function() {
+                peopleContainer.removeChild(personDiv);
+            });
+            
+            // 创建人员输入字段
+            personDiv.innerHTML = `
+                <div class="form-group" style="margin-bottom: 5px;">
+                    <label style="display: block; margin-bottom: 3px;">姓名</label>
+                    <input type="text" class="person-name" value="${person?.name || ''}" placeholder="姓名">
+                </div>
+                <div class="form-group" style="margin-bottom: 5px;">
+                    <label style="display: block; margin-bottom: 3px;">身份证号</label>
+                    <input type="text" class="person-id" value="${person?.id_number || ''}" placeholder="身份证号码">
+                </div>
+                <div class="form-group" style="margin-bottom: 5px;">
+                    <label style="display: block; margin-bottom: 3px;">户籍地</label>
+                    <input type="text" class="person-address" value="${person?.household_registration || ''}" placeholder="户籍地">
+                </div>
+            `;
+            
+            personDiv.appendChild(removeBtn);
+            peopleContainer.appendChild(personDiv);
+        }
+
+        // 获取人员表单数据
+        function getPeopleData() {
+            const peopleContainer = document.getElementById('edit-people-container');
+            if (!peopleContainer) return [];
+            
+            const personForms = peopleContainer.querySelectorAll('.person-form');
+            const peopleData = [];
+            
+            personForms.forEach(form => {
+                const nameInput = form.querySelector('.person-name');
+                const idInput = form.querySelector('.person-id');
+                const addressInput = form.querySelector('.person-address');
+                
+                if (nameInput && nameInput.value.trim()) {
+                    peopleData.push({
+                        name: nameInput.value.trim(),
+                        id_number: idInput ? idInput.value.trim() : '',
+                        household_registration: addressInput ? addressInput.value.trim() : ''
+                    });
+                }
+            });
+            
+            return peopleData;
+        }
+
+        // 删除图片
+        function deleteImage(imageId) {
+            if (confirm('确定要删除这张图片吗？此操作不可恢复。')) {
+                const token = localStorage.getItem('token');
+                fetch(`/api/images/${imageId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('删除图片失败');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    showMessage('图片删除成功', 'success');
+                    // 刷新图片列表
+                    window.location.reload();
+                })
+                .catch(error => {
+                    console.error('删除图片失败:', error);
+                    showMessage('删除图片失败', 'error');
+                });
+            }
+        }
+    </script>
+
+    <!-- 添加图片详情弹窗 -->
+    <div id="imageDetailModal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal">&times;</span>
+            <h2 style="margin-top: 0; margin-bottom: 10px;">图片详情</h2>
+            <div class="image-detail-container">
+                <div class="image-preview">
+                    <img id="detailImagePreview" src="" alt="图片预览">
+                </div>
+                <div class="image-info-detail">
+                    <div id="imageInfoDisplay">
+                        <p><i class="fas fa-clock"></i> 拍摄时间：<span id="detailTime"></span></p>
+                        <p><i class="fas fa-map-marker-alt"></i> 地点：<span id="detailLocation"></span></p>
+                        <p><i class="fas fa-car"></i> 交通方式：<span id="detailTransportation"></span></p>
+                        <p><i class="fas fa-comment-alt"></i> 事件描述：<span id="detailDescription"></span></p>
+                        <p><i class="fas fa-user"></i> 涉事人员：<span id="detailPerson"></span></p>
+                        <p><i class="fas fa-map"></i> GPS坐标：<span id="detailGPS"></span></p>
+                        <p><i class="fas fa-user"></i> 上传者：<span id="detailUploader"></span></p>
+                        <p><i class="fas fa-upload"></i> 上传时间：<span id="detailUploadTime"></span></p>
+                    </div>
+                    <div id="imageInfoEdit" class="edit-form">
+                        <div class="form-group">
+                            <label for="editTime">拍摄时间</label>
+                            <input type="datetime-local" id="editTime" required step="1">
+                        </div>
+                        <div class="form-group">
+                            <label for="editLocation">地点</label>
+                            <input type="text" id="editLocation" placeholder="地点">
+                        </div>
+                        <div class="form-group">
+                            <label for="editTransportation">交通方式</label>
+                            <input type="text" id="editTransportation" placeholder="请输入交通方式">
+                        </div>
+                        <div class="form-group">
+                            <label for="editDescription">事件描述</label>
+                            <textarea id="editDescription" placeholder="请输入事件描述" rows="2"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>GPS坐标（选填）</label>
+                            <div class="gps-inputs">
+                                <input type="number" id="editLatitude" placeholder="纬度" step="any">
+                                <input type="number" id="editLongitude" placeholder="经度" step="any">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>涉事人员信息（选填）</label>
+                            <div id="edit-people-container"></div>
+                            <button type="button" id="add-person-btn" class="btn secondary-btn" style="margin-top: 5px;">添加人员</button>
+                        </div>
+                    </div>
+                    <div class="action-buttons">
+                        <button class="edit-btn" onclick="toggleEditMode()">编辑</button>
+                        <button class="delete-btn" onclick="deleteImageFromDetail()">删除</button>
+                        <button class="save-btn" onclick="saveImageDetails()">保存</button>
+                        <button class="cancel-btn" onclick="cancelEdit()">取消</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html> 

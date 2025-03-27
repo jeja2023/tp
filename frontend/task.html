@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>任务管理 - 图片管理系统</title>
+    <!-- 添加版本号防止缓存 -->
+    <link rel="stylesheet" href="/static/css/styles.css?v=1.0.2">
+    <!-- 添加Font Awesome图标库 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <!-- 高德地图API配置 -->
+    <style>
+        .back-home-btn {
+            padding: 6px 12px;
+            border: 1px solid #3498db;
+            border-radius: 4px;
+            background: transparent;
+            color: #3498db;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .back-home-btn:hover {
+            background: #3498db;
+            color: white;
+        }
+    </style>
+</head>
+
+<body>
+    <nav class="navbar">
+        <div class="navbar-brand">图片管理系统</div>
+        <div class="navbar-user" id="user-info">
+            <button onclick="window.location.href='/index'" class="back-home-btn">
+                <i class="fas fa-home"></i>返回主页
+            </button>
+            <span class="welcome-text">欢迎，<span id="username"></span></span>
+            <button id="logout-btn">退出</button>
+        </div>
+    </nav>
+
+    <section class="container">
+        <div class="task-header">
+            <h1>任务管理</h1>
+            <button id="create-task-btn" class="btn primary-btn">创建新任务</button>
+        </div>
+        
+        <table class="task-list">
+            <thead>
+                <tr>
+                    <th>序号</th>
+                    <th>任务名称</th>
+                    <th>描述</th>
+                    <th>创建人</th>
+                    <th>创建时间</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody id="task-table-body">
+                <tr>
+                    <td colspan="6" class="loading-text">加载中...</td>
+                </tr>
+            </tbody>
+        </table>
+    </section>
+    
+    <!-- 任务详情部分 -->
+    <section id="task-detail-section" class="container" style="display: none;">
+        <div class="task-header">
+            <button id="back-to-tasks-btn" class="btn secondary-btn">返回任务列表</button>
+            <h2>任务: <span id="current-task-title"></span></h2>
+            <p id="current-task-description"></p>
+        </div>
+        
+        <!-- 图片上传和管理区域 -->
+        <div class="image-management">
+            <h3>图片管理</h3>
+            
+            <!-- 上传区域 - 三列布局 -->
+            <div class="upload-container">
+                <!-- 左侧: 上传图片 -->
+                <div class="upload-column">
+                    <h4>上传图片</h4>
+                    <form id="upload-form" enctype="multipart/form-data">
+                        <div class="file-upload-container">
+                            <label for="file" class="file-upload-label">选择图片</label>
+                            <input type="file" id="file" name="file" accept="image/*" required onchange="previewImage(event)">
+                        </div>
+                        <div id="image-preview-container">
+                            <img id="image-preview" src="#" alt="预览" style="display: none; max-width: 100%;">
+                        </div>
+                        <button type="submit" class="btn primary-btn upload-btn">上传</button>
+                    </form>
+                </div>
+                
+                <!-- 中间: 填写图片信息 -->
+                <div class="info-column">
+                    <h4>图片信息</h4>
+                    <div class="form-group">
+                        <label for="time">时间 *</label>
+                        <input type="datetime-local" id="time" name="time" required step="1">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="location">地点 *</label>
+                        <input type="text" id="location" name="location" required>
+                        <button type="button" id="get-location-btn" class="btn small-btn">获取当前位置</button>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="transportation">交通方式 *</label>
+                        <input type="text" id="transportation" name="transportation" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="gps-coordinates">GPS坐标 (选填)</label>
+                        <div class="gps-inputs">
+                            <input type="text" id="gps-latitude" name="gps_latitude" placeholder="纬度">
+                            <input type="text" id="gps-longitude" name="gps_longitude" placeholder="经度">
+                        </div>
+                    </div>
+                    
+                    <!-- 人员信息 (选填) -->
+                    <div class="people-section">
+                        <h4>相关人员 (选填)</h4>
+                        <div id="people-container">
+                            <!-- 人员表单将在这里动态添加 -->
+                        </div>
+                        <button type="button" id="add-person-btn" class="btn secondary-btn">添加人员</button>
+                    </div>
+                </div>
+                
+                <!-- 右侧: 图片预览和信息摘要 -->
+                <div class="preview-column">
+                    <h4>信息预览</h4>
+                    <div id="info-preview" class="info-preview">
+                        <p>请上传图片并填写信息</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 地图显示区域 -->
+            <div class="map-container">
+                <h4>地图定位</h4>
+                <button type="button" id="show-map-btn" class="btn secondary-btn">显示地图</button>
+                <div id="map-container" style="height: 300px; display: none; margin: 10px 0;"></div>
+    </div>
+            
+            <!-- 已上传图片列表 -->
+            <div class="uploaded-images-section">
+                <h3>已上传图片</h3>
+                <div id="image-list" class="image-list">
+                    <!-- 图片将在这里动态加载 -->
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <!-- 创建任务模态窗口 -->
+    <div id="create-task-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>创建新任务</h3>
+                <button class="close-btn">&times;</button>
+            </div>
+            <form id="create-task-form">
+                <div class="form-group">
+                    <label for="create-task-title">任务名称</label>
+                    <input type="text" id="create-task-title" required>
+                </div>
+                <div class="form-group">
+                    <label for="create-task-description">任务描述</label>
+                    <textarea id="create-task-description" rows="4"></textarea>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn secondary-btn close-btn">取消</button>
+                    <button type="submit" class="btn primary-btn">创建</button>
+                </div>
+        </form>
+        </div>
+    </div>
+    
+    <!-- 编辑任务模态窗口 -->
+    <div id="edit-task-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>编辑任务</h3>
+                <button class="close-btn">&times;</button>
+            </div>
+            <form id="edit-task-form">
+                <input type="hidden" id="edit-task-id">
+                <div class="form-group">
+                    <label for="edit-task-title">任务名称</label>
+                    <input type="text" id="edit-task-title" required>
+                </div>
+                <div class="form-group">
+                    <label for="edit-task-description">任务描述</label>
+                    <textarea id="edit-task-description" rows="4"></textarea>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn secondary-btn close-btn">取消</button>
+                    <button type="submit" class="btn primary-btn">保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- 分享任务模态窗口 -->
+    <div id="share-task-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>分享任务: <span id="share-task-title"></span></h3>
+                <button class="close-btn">&times;</button>
+            </div>
+            <form id="share-task-form">
+                <input type="hidden" id="share-task-id">
+                <div class="form-group">
+                    <label for="share-task-username">用户名</label>
+                    <input type="text" id="share-task-username" required>
+                </div>
+                <div class="form-group">
+                    <label for="share-task-permission">权限</label>
+                    <select id="share-task-permission">
+                        <option value="view">只能查看</option>
+                        <option value="edit">可以编辑</option>
+                        <option value="admin">管理员权限</option>
+                    </select>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn secondary-btn close-btn">取消</button>
+                    <button type="submit" class="btn primary-btn">分享</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 查看分享用户模态窗口 -->
+    <div id="manage-permissions-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>权限管理: <span id="manage-permissions-title"></span></h3>
+                <button class="close-btn">&times;</button>
+            </div>
+            <div class="permissions-list-container">
+                <table class="permissions-table">
+                    <thead>
+                        <tr>
+                            <th>用户名</th>
+                            <th>权限类型</th>
+                            <th>分享来源</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="permissions-table-body">
+                        <tr>
+                            <td colspan="3" class="loading-text">加载中...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn secondary-btn close-btn">关闭</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 添加人员模板 -->
+    <template id="person-template">
+        <div class="person-form">
+            <div class="form-group">
+                <input type="text" class="person-name" placeholder="姓名">
+            </div>
+            <div class="form-group">
+                <input type="text" class="person-id" placeholder="身份证号">
+            </div>
+            <div class="form-group">
+                <input type="text" class="person-household" placeholder="户籍地">
+            </div>
+            <button type="button" class="btn remove-btn remove-person-btn">删除</button>
+        </div>
+    </template>
+
+    <!-- JavaScript -->
+    <script src="/static/js/map.js?v=1.0.2"></script>
+    <script src="/static/js/task-manager.js?v=1.0.2"></script>
+    <script>
+        // 页面加载时获取用户名
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('页面加载完成，开始获取用户名');
+            
+            // 检查token
+            const token = localStorage.getItem('token');
+            console.log('Token状态:', token ? '存在' : '不存在');
+            
+            if (!token) {
+                console.log('未找到token，重定向到登录页面');
+                window.location.href = '/login';
+                return;
+            }
+            
+            // 获取用户名
+            const username = localStorage.getItem('username');
+            console.log('从localStorage获取的用户名:', username);
+            
+            if (!username) {
+                console.log('未找到用户名，重定向到登录页面');
+                window.location.href = '/login';
+                return;
+            }
+            
+            // 设置用户名显示
+            const usernameElement = document.getElementById('username');
+            if (usernameElement) {
+                usernameElement.textContent = username;
+                console.log('用户名已成功设置到页面');
+            } else {
+                console.error('未找到username元素');
+            }
+            
+            // 设置退出按钮事件
+            const logoutBtn = document.getElementById('logout-btn');
+            if (logoutBtn) {
+                logoutBtn.addEventListener('click', function() {
+                    localStorage.removeItem('token');
+                    localStorage.removeItem('username');
+                    window.location.href = '/login';
+                });
+            }
+
+            // 监听任务操作完成事件
+            document.addEventListener('taskOperationComplete', function() {
+                // 重新加载页面
+                window.location.reload();
+            });
+        });
+    </script>
+</body>
+
+</html>

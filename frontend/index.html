@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>主页面 - 图片管理系统</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <!-- 添加Font Awesome图标库 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <!-- 最后加载自定义样式，确保能覆盖Bootstrap的样式 -->
+    <link rel="stylesheet" href="/static/css/styles.css">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            overflow-y: hidden; /* 禁用页面滚动 */
+        }
+        
+        .main-container {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding-top: 60px; /* 为固定导航栏留出空间 */
+        }
+        
+        .btn-container {
+            display: flex;
+            gap: 30px;
+            margin-top: 30px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        
+        .function-item {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            text-align: center;
+            width: 300px;
+            transition: transform 0.3s ease;
+        }
+        
+        .function-item:hover {
+            transform: translateY(-5px);
+        }
+        
+        .function-item h3 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+            font-size: 1.4rem;
+        }
+        
+        .function-item p {
+            color: #666;
+            margin-bottom: 15px;
+            font-size: 0.95rem;
+        }
+        
+        .function-item .btn {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            transition: background-color 0.3s ease;
+        }
+        
+        .function-item .btn:hover {
+            background-color: #2980b9;
+        }
+        
+        .page-title {
+            color: #2c3e50;
+            margin-bottom: 40px;
+            font-size: 2.2rem;
+            text-align: center;
+        }
+        
+        /* 下面的样式将覆盖任何之前的样式 */
+        .navbar-brand {
+            font-size: 20px !important;
+            font-weight: bold !important;
+            color: #3498db !important;
+        }
+        
+        .navbar {
+            padding: 15px 30px !important;
+        }
+        
+        /* 确保没有覆盖styles.css中的样式 */
+        .navbar {
+            padding: 15px 30px;
+        }
+        
+        .navbar-brand {
+            color: #3498db;
+            font-size: 20px;
+        }
+        
+        /* 覆盖样式，确保退出按钮与其他页面一致 */
+        #logout-btn {
+            background-color: #e74c3c;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 4px;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        #logout-btn:hover {
+            background-color: #c0392b;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="navbar-brand">图片管理系统</div>
+        <div class="navbar-user">
+            <span class="welcome-text">欢迎，<span id="username"></span></span>
+            <button id="logout-btn">退出</button>
+        </div>
+    </nav>
+
+    <div class="main-container">
+        <h1 class="page-title">欢迎使用图片管理系统</h1>
+        <div class="btn-container">
+            <div class="function-item">
+                <h3>任务管理</h3>
+                <p>管理图片上传和处理任务</p>
+                <button class="btn" onclick="window.location.href='/task'">进入任务管理</button>
+            </div>
+            <div class="function-item">
+                <h3>地图功能</h3>
+                <p>在地图上显示和编辑GPS点位信息</p>
+                <button class="btn" onclick="window.location.href='/map'">进入地图功能</button>
+            </div>
+            <div class="function-item" id="admin-panel" style="display: none;">
+                <h3>管理员控制台</h3>
+                <p>用户审核与系统管理</p>
+                <button class="btn" onclick="window.location.href='/admin'">进入管理后台</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap Bundle with Popper -->
+    <script src="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // 页面加载时获取用户名
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('页面加载完成，开始获取用户名');
+            
+            // 检查token
+            const token = localStorage.getItem('token');
+            console.log('Token状态:', token ? '存在' : '不存在');
+            
+            if (!token) {
+                console.log('未找到token，重定向到登录页面');
+                window.location.href = '/login';
+                return;
+            }
+            
+            // 获取用户名
+            const username = localStorage.getItem('username');
+            console.log('从localStorage获取的用户名:', username);
+            
+            if (!username) {
+                console.log('未找到用户名，重定向到登录页面');
+                window.location.href = '/login';
+                return;
+            }
+            
+            // 设置用户名显示
+            const usernameElement = document.getElementById('username');
+            if (usernameElement) {
+                usernameElement.textContent = username;
+                console.log('用户名已成功设置到页面');
+            } else {
+                console.error('未找到username元素');
+            }
+            
+            // 检查是否是管理员用户并显示管理员控制台
+            checkIfAdmin();
+            
+            // 设置退出按钮事件
+            const logoutBtn = document.getElementById('logout-btn');
+            if (logoutBtn) {
+                logoutBtn.addEventListener('click', function() {
+                    localStorage.removeItem('token');
+                    localStorage.removeItem('username');
+                    window.location.href = '/login';
+                });
+            }
+        });
+        
+        // 检查当前用户是否是管理员
+        function checkIfAdmin() {
+            // 获取当前用户详细信息来确认是否为管理员
+            const token = localStorage.getItem('token');
+            if (!token) return;
+            
+            fetch('/api/users/me', {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            })
+            .then(response => {
+                if (response.ok) {
+                    return response.json();
+                } else {
+                    throw new Error('获取用户信息失败');
+                }
+            })
+            .then(userData => {
+                console.log('获取到用户信息:', userData);
+                
+                // 检查用户是否是管理员
+                if (userData.is_admin) {
+                    console.log('当前用户是管理员，显示管理员控制台');
+                    // 显示管理员控制台入口
+                    document.getElementById('admin-panel').style.display = 'block';
+                } else {
+                    console.log('当前用户不是管理员');
+                    // 确保管理员控制台不可见
+                    document.getElementById('admin-panel').style.display = 'none';
+                }
+            })
+            .catch(error => {
+                console.error('获取用户信息失败:', error);
+                // 出错时隐藏管理员控制台
+                document.getElementById('admin-panel').style.display = 'none';
+            });
+        }
+    </script>
+</body>
+</html> 

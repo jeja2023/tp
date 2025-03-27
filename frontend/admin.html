@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>管理员控制台 - 图片管理系统</title>
+    <link rel="stylesheet" href="/static/css/styles.css?v=1.0.2">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <style>
+        .admin-panel {
+            padding: 30px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            margin-top: 20px;
+        }
+        
+        .tab-header {
+            display: flex;
+            border-bottom: 1px solid #e1e8ed;
+            margin-bottom: 20px;
+        }
+        
+        .tab-button {
+            padding: 10px 20px;
+            cursor: pointer;
+            border: none;
+            background: none;
+            font-size: 16px;
+            color: #555;
+            position: relative;
+        }
+        
+        .tab-button.active {
+            color: #3498db;
+            font-weight: bold;
+        }
+        
+        .tab-button.active:after {
+            content: '';
+            position: absolute;
+            bottom: -1px;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background-color: #3498db;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .user-list {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .user-list th, .user-list td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #e1e8ed;
+        }
+        
+        .user-list th {
+            background-color: #f8f9fa;
+            font-weight: 600;
+            color: #555;
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        
+        .badge-success {
+            background-color: #2ecc71;
+            color: white;
+        }
+        
+        .badge-warning {
+            background-color: #f39c12;
+            color: white;
+        }
+        
+        .badge-danger {
+            background-color: #e74c3c;
+            color: white;
+        }
+        
+        .back-home-btn {
+            padding: 6px 12px;
+            border: 1px solid #3498db;
+            border-radius: 4px;
+            background: transparent;
+            color: #3498db;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .back-home-btn:hover {
+            background: #3498db;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <!-- 导航栏 -->
+    <nav class="navbar">
+        <div class="navbar-brand">图片管理系统</div>
+        <div class="navbar-user">
+            <button onclick="window.location.href='/index'" class="back-home-btn">
+                <i class="fas fa-home"></i>返回主页
+            </button>
+            <span class="welcome-text">欢迎，<span id="username"></span></span>
+            <button id="logout-btn">退出登录</button>
+        </div>
+    </nav>
+    
+    <div class="container">
+        <h1>管理员控制台</h1>
+        
+        <div class="admin-panel">
+            <div class="tab-header">
+                <button class="tab-button active" data-tab="pending-users">待审核用户</button>
+                <button class="tab-button" data-tab="approved-users">已审核用户</button>
+            </div>
+            
+            <div id="pending-users" class="tab-content active">
+                <h2>待审核用户</h2>
+                <table class="user-list">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>用户名</th>
+                            <th>手机号</th>
+                            <th>邮箱</th>
+                            <th>注册时间</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="pending-users-list">
+                        <tr>
+                            <td colspan="6" class="loading-text">加载中...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <div id="approved-users" class="tab-content">
+                <h2>已审核用户</h2>
+                <table class="user-list">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>用户名</th>
+                            <th>手机号</th>
+                            <th>邮箱</th>
+                            <th>角色</th>
+                            <th>状态</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="approved-users-list">
+                        <tr>
+                            <td colspan="7" class="loading-text">加载中...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // 检查用户是否已登录并且是管理员
+            const token = localStorage.getItem('token');
+            const username = localStorage.getItem('username');
+            
+            if (!token) {
+                window.location.href = '/login';
+                return;
+            }
+            
+            // 检查用户是否是管理员
+            fetch('/api/users/me', {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            })
+            .then(response => {
+                if (response.ok) {
+                    return response.json();
+                } else {
+                    throw new Error('获取用户信息失败');
+                }
+            })
+            .then(userData => {
+                // 如果不是管理员，重定向到主页
+                if (!userData.is_admin) {
+                    console.log('非管理员用户尝试访问管理控制台，重定向到主页');
+                    window.location.href = '/index';
+                    return;
+                }
+                
+                // 是管理员，继续加载管理控制台
+                console.log('管理员用户访问管理控制台');
+                
+                // 显示用户名
+                document.getElementById('username').textContent = username;
+                
+                // 加载用户列表
+                loadPendingUsers();
+                loadApprovedUsers();
+            })
+            .catch(error => {
+                console.error('验证管理员失败:', error);
+                // 出错时重定向到主页
+                window.location.href = '/index';
+            });
+            
+            // 设置标签页切换
+            document.querySelectorAll('.tab-button').forEach(button => {
+                button.addEventListener('click', function() {
+                    // 移除所有active类
+                    document.querySelectorAll('.tab-button').forEach(btn => {
+                        btn.classList.remove('active');
+                    });
+                    document.querySelectorAll('.tab-content').forEach(content => {
+                        content.classList.remove('active');
+                    });
+                    
+                    // 给当前点击的按钮和内容添加active类
+                    this.classList.add('active');
+                    const tabId = this.getAttribute('data-tab');
+                    document.getElementById(tabId).classList.add('active');
+                });
+            });
+            
+            // 退出登录
+            document.getElementById('logout-btn').addEventListener('click', function() {
+                localStorage.removeItem('token');
+                localStorage.removeItem('username');
+                window.location.href = '/task';
+            });
+        });
+        
+        // 加载待审核用户
+        function loadPendingUsers() {
+            const token = localStorage.getItem('token');
+            
+            fetch('/api/users/pending', {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    if (response.status === 403) {
+                        // 不是管理员
+                        window.location.href = '/task';
+                        return;
+                    }
+                    throw new Error('加载待审核用户失败');
+                }
+                return response.json();
+            })
+            .then(users => {
+                const tableBody = document.getElementById('pending-users-list');
+                
+                if (!users || users.length === 0) {
+                    tableBody.innerHTML = '<tr><td colspan="6" class="no-data">暂无待审核用户</td></tr>';
+                    return;
+                }
+                
+                tableBody.innerHTML = '';
+                users.forEach(user => {
+                    const row = document.createElement('tr');
+                    const createdAt = new Date(user.created_at).toLocaleString();
+                    
+                    row.innerHTML = `
+                        <td>${user.id}</td>
+                        <td>${user.username}</td>
+                        <td>${user.phone || '-'}</td>
+                        <td>${user.email || '-'}</td>
+                        <td>${createdAt}</td>
+                        <td>
+                            <button class="btn primary-btn approve-btn" data-id="${user.id}">审核通过</button>
+                            <button class="btn danger-btn reject-btn" data-id="${user.id}">拒绝</button>
+                        </td>
+                    `;
+                    
+                    tableBody.appendChild(row);
+                });
+                
+                // 添加审核按钮事件监听
+                addApproveButtonListeners();
+                addRejectButtonListeners();
+            })
+            .catch(error => {
+                console.error('加载待审核用户失败:', error);
+                const tableBody = document.getElementById('pending-users-list');
+                tableBody.innerHTML = '<tr><td colspan="6" class="error-text">加载失败，请刷新页面重试</td></tr>';
+            });
+        }
+        
+        // 加载已审核用户
+        function loadApprovedUsers() {
+            const token = localStorage.getItem('token');
+            
+            fetch('/api/users/', {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    if (response.status === 403) {
+                        // 不是管理员
+                        window.location.href = '/task';
+                        return;
+                    }
+                    throw new Error('加载已审核用户失败');
+                }
+                return response.json();
+            })
+            .then(users => {
+                const tableBody = document.getElementById('approved-users-list');
+                
+                if (!users || users.length === 0) {
+                    tableBody.innerHTML = '<tr><td colspan="7" class="no-data">暂无已审核用户</td></tr>';
+                    return;
+                }
+                
+                // 过滤出已审核用户
+                const approvedUsers = users.filter(user => user.is_approved);
+                
+                if (approvedUsers.length === 0) {
+                    tableBody.innerHTML = '<tr><td colspan="7" class="no-data">暂无已审核用户</td></tr>';
+                    return;
+                }
+                
+                tableBody.innerHTML = '';
+                approvedUsers.forEach(user => {
+                    const row = document.createElement('tr');
+                    const statusClass = user.is_active ? 'badge-success' : 'badge-danger';
+                    const statusText = user.is_active ? '正常' : '禁用';
+                    
+                    row.innerHTML = `
+                        <td>${user.id}</td>
+                        <td>${user.username}</td>
+                        <td>${user.phone || '-'}</td>
+                        <td>${user.email || '-'}</td>
+                        <td>${user.is_admin ? '管理员' : '普通用户'}</td>
+                        <td><span class="badge ${statusClass}">${statusText}</span></td>
+                        <td>
+                            <button class="btn danger-btn toggle-status-btn" data-id="${user.id}" data-status="${user.is_active}">
+                                ${user.is_active ? '禁用' : '启用'}
+                            </button>
+                            <button class="btn danger-btn delete-user-btn" data-id="${user.id}" data-username="${user.username}">
+                                删除
+                            </button>
+                        </td>
+                    `;
+                    
+                    tableBody.appendChild(row);
+                });
+                
+                // 添加状态切换按钮事件监听
+                addToggleStatusButtonListeners();
+                // 添加删除用户按钮事件监听
+                addDeleteUserButtonListeners();
+            })
+            .catch(error => {
+                console.error('加载已审核用户失败:', error);
+                const tableBody = document.getElementById('approved-users-list');
+                tableBody.innerHTML = '<tr><td colspan="7" class="error-text">加载失败，请刷新页面重试</td></tr>';
+            });
+        }
+        
+        // 添加审核通过按钮事件监听
+        function addApproveButtonListeners() {
+            document.querySelectorAll('.approve-btn').forEach(button => {
+                button.addEventListener('click', function() {
+                    const userId = this.getAttribute('data-id');
+                    approveUser(userId);
+                });
+            });
+        }
+        
+        // 添加拒绝按钮事件监听
+        function addRejectButtonListeners() {
+            document.querySelectorAll('.reject-btn').forEach(button => {
+                button.addEventListener('click', function() {
+                    const userId = this.getAttribute('data-id');
+                    rejectUser(userId);
+                });
+            });
+        }
+        
+        // 添加状态切换按钮事件监听
+        function addToggleStatusButtonListeners() {
+            document.querySelectorAll('.toggle-status-btn').forEach(button => {
+                button.addEventListener('click', function() {
+                    const userId = this.getAttribute('data-id');
+                    const currentStatus = this.getAttribute('data-status') === 'true';
+                    toggleUserStatus(userId, currentStatus);
+                });
+            });
+        }
+        
+        // 添加删除用户按钮事件监听
+        function addDeleteUserButtonListeners() {
+            document.querySelectorAll('.delete-user-btn').forEach(button => {
+                button.addEventListener('click', function() {
+                    const userId = this.getAttribute('data-id');
+                    const username = this.getAttribute('data-username');
+                    if (confirm(`确定要删除用户 "${username}" 吗？此操作不可恢复！`)) {
+                        deleteUser(userId);
+                    }
+                });
+            });
+        }
+        
+        // 审核通过用户
+        function approveUser(userId) {
+            const token = localStorage.getItem('token');
+            
+            fetch(`/api/users/${userId}/approve`, {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ approve: true })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('审核通过失败');
+                }
+                return response.json();
+            })
+            .then(() => {
+                alert('审核通过成功');
+                loadPendingUsers();
+                loadApprovedUsers();
+            })
+            .catch(error => {
+                console.error('审核通过失败:', error);
+                alert('审核通过失败，请重试');
+            });
+        }
+        
+        // 拒绝用户
+        function rejectUser(userId) {
+            const token = localStorage.getItem('token');
+            
+            fetch(`/api/users/${userId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('拒绝用户失败');
+                }
+                return response.json();
+            })
+            .then(() => {
+                alert('拒绝用户成功');
+                loadPendingUsers();
+            })
+            .catch(error => {
+                console.error('拒绝用户失败:', error);
+                alert('拒绝用户失败，请重试');
+            });
+        }
+        
+        // 切换用户状态
+        function toggleUserStatus(userId, currentStatus) {
+            const token = localStorage.getItem('token');
+            const newStatus = !currentStatus;
+            
+            console.log(`更新用户 ${userId} 状态为 ${newStatus ? '启用' : '禁用'}`);
+            
+            fetch(`/api/users/${userId}/status`, {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ is_active: newStatus })
+            })
+            .then(response => {
+                console.log('状态更新响应状态:', response.status);
+                if (!response.ok) {
+                    return response.json().then(errData => {
+                        throw new Error(errData.detail || '更新用户状态失败');
+                    });
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('更新成功:', data);
+                alert(newStatus ? '用户已启用' : '用户已禁用');
+                loadApprovedUsers();
+            })
+            .catch(error => {
+                console.error('更新用户状态失败:', error);
+                alert(`更新用户状态失败: ${error.message}`);
+            });
+        }
+        
+        // 删除用户
+        function deleteUser(userId) {
+            const token = localStorage.getItem('token');
+            
+            fetch(`/api/users/${userId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            })
+            .then(response => {
+                console.log('删除用户响应状态:', response.status);
+                if (!response.ok) {
+                    return response.json().then(errData => {
+                        throw new Error(errData.detail || '删除用户失败');
+                    });
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('删除成功:', data);
+                alert('用户已成功删除');
+                loadApprovedUsers();
+            })
+            .catch(error => {
+                console.error('删除用户失败:', error);
+                alert(`删除用户失败: ${error.message}`);
+            });
+        }
+    </script>
+</body>
+</html> 

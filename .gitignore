@@ -1,0 +1,119 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# 虚拟环境
+.env
+.venv
+venv/
+ENV/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# 项目特定
+uploads/
+outputs/
+logs/
+*.log
+.env
+.env.local
+.env.*.local
+
+# 数据库
+*.sqlite3
+*.db
+
+# 临时文件
+temp/
+tmp/
+
+# 系统文件
+.DS_Store
+Thumbs.db
+
+# 证书和密钥
+*.pem
+*.key
+*.crt
+*.cer
+*.der
+*.priv
+
+# 其他
+*.bak
+*.tmp
+*.temp
+
+# Distribution / packaging
+*.egg-info/
+
+# Testing
+.coverage
+htmlcov/
+.pytest_cache/
+
+# Local development settings
+*.swp
+*.swo
+
+# Environment variables
+!.env.example
+
+# 其他忽略文件
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info
+dist
+build
+eggs
+parts
+bin
+var
+sdist
+develop-eggs
+.installed.cfg
+lib
+lib64
+
+# 敏感信息
+**/secrets.json
+**/credentials.json
+**/config.json
+**/api_keys.json
+**/tokens.json
+**/keys.json
+**/auth.json
+**/config.local.json
+**/secrets.local.json
+**/credentials.local.json
+**/api_keys.local.json
+**/tokens.local.json
+**/keys.local.json
+**/auth.local.json 
