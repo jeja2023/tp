@@ -15,6 +15,7 @@ try:
     # 导入数据库模型
     from backend.models.models import Base
     from backend.db.database import engine, IS_PRODUCTION
+    from backend.db.initialize_db import initialize_base_data
 
     # 导入路由
     from backend.routers.base import router as base_router
@@ -26,6 +27,9 @@ try:
 
     # 创建数据库表
     Base.metadata.create_all(bind=engine)
+    
+    # 初始化基础数据（包括管理员账户）
+    initialize_base_data()
 except Exception as e:
     logger.error(f"启动出错: {str(e)}", exc_info=True)
     sys.exit(1)
