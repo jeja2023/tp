@@ -2,20 +2,27 @@ import logging
 import sys
 from config import settings
 
-def setup_logger(name, level=logging.INFO):
+def setup_logger(name, level=None):
     """
     配置日志记录器
     
     Args:
         name: 日志记录器名称
-        level: 日志级别，默认为INFO
+        level: 日志级别，如果未指定则根据环境自动设置
     
     Returns:
         logging.Logger: 配置好的日志记录器
     """
+    # 如果未指定级别，则根据环境设置
+    if level is None:
+        level = logging.INFO if settings.IS_PRODUCTION else logging.DEBUG
+    
     # 创建日志记录器
     logger = logging.getLogger(name)
     logger.setLevel(level)
+    
+    # 清除现有的处理器
+    logger.handlers.clear()
     
     # 如果是生产环境，将日志写入文件
     if settings.IS_PRODUCTION:

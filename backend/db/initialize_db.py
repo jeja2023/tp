@@ -74,9 +74,9 @@ def initialize_base_data():
             )
             db.add(admin_user)
             db.commit()
-            logger.info("创建管理员账号成功")
+            logger.debug("创建管理员账号成功")
         else:
-            logger.info("管理员账号已存在，跳过创建")
+            logger.debug("管理员账号已存在，跳过创建")
             
     except Exception as e:
         logger.error(f"初始化基础数据失败: {str(e)}", exc_info=True)
