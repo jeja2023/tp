@@ -90,7 +90,7 @@ class PersonInvolved(Base):
     __tablename__ = "people_involved"
     
     id = Column(Integer, primary_key=True, index=True)
-    image_id = Column(Integer, ForeignKey("images.id"))
+    image_id = Column(Integer, ForeignKey("images.id", ondelete="CASCADE"))
     name = Column(String(50))
     id_number = Column(String(18))
     household_registration = Column(String(255))
