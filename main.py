@@ -7,6 +7,8 @@ import uvicorn
 import sys
 from backend.utils.logger import setup_logger
 from fastapi.templating import Jinja2Templates
+from backend.utils.key_manager import KeyManager
+from config import settings
 
 # 使用新的日志配置
 logger = setup_logger("app")
@@ -53,12 +55,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 创建上传和输出目录
-for directory in ["uploads", "outputs"]:
-    if not os.path.exists(directory):
-        os.makedirs(directory)
-        logger.info(f"创建目录: {directory}")
-
 # 注册API路由
 app.include_router(base_router)  # 移除prefix参数
 app.include_router(users_router, prefix="/api")
@@ -74,10 +70,48 @@ app.mount("/api/uploads", StaticFiles(directory="uploads"), name="uploads")
 app.mount("/outputs", StaticFiles(directory="outputs"), name="outputs")
 app.mount("/frontend", StaticFiles(directory="frontend"), name="frontend")
 
-# 从环境变量获取高德地图API密钥
-AMAP_API_KEY = os.getenv("AMAP_API_KEY", "your_amap_api_key")
-
 templates = Jinja2Templates(directory="frontend")
+
+# 初始化密钥管理器（在config导入完成后）
+@app.on_event("startup")
+async def startup_event():
+    try:
+        # 初始化密钥管理器
+        key_manager = KeyManager()
+        
+        # 记录密钥状态信息（不包含密钥本身）
+        key_info = key_manager.get_key_info()
+        logger.info(f"密钥状态: 上次轮换={key_info['last_rotation']}, 下次轮换={key_info['next_rotation']}, 剩余天数={key_info['days_until_rotation']}")
+        
+        # 检查并更新密钥
+        new_key = key_manager.rotate_key()
+        if new_key:
+            logger.info(f"密钥已更新，系统安全性已增强")
+            
+            # 确保utils.py中的SECRET_KEY被更新
+            from backend.utils import utils
+            # 强制刷新utils模块中的SECRET_KEY
+            utils.SECRET_KEY = key_manager.get_current_key()
+            logger.info(f"应用接口安全密钥已更新")
+        else:
+            logger.info("密钥验证完成，当前密钥有效")
+            
+            # 确保utils.py中的SECRET_KEY是最新的
+            from backend.utils import utils
+            current_key = key_manager.get_current_key()
+            if utils.SECRET_KEY != current_key:
+                utils.SECRET_KEY = current_key
+                logger.warning("检测到utils模块中的密钥不一致，已更新为最新密钥")
+        
+        # 记录安全审计信息
+        if IS_PRODUCTION:
+            logger.info("生产环境安全审计: JWT密钥已验证，密钥轮换机制已启用")
+        
+        # 记录离线地图配置信息
+        logger.info(f"使用离线地图: 路径={settings.MAP_TILE_PATH}, 默认缩放={settings.MAP_DEFAULT_ZOOM}")
+    except Exception as e:
+        logger.error(f"初始化密钥管理器出错: {str(e)}", exc_info=True)
+        # 不退出程序，允许继续运行，但记录错误
 
 # 主程序入口
 if __name__ == "__main__":

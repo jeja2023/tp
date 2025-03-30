@@ -20,7 +20,9 @@ async def read_index(request: Request):
 async def read_login(request: Request):
     return templates.TemplateResponse("login.html", {
         "request": request,
-        "amap_api_key": settings.AMAP_API_KEY
+        "map_tile_path": settings.MAP_TILE_PATH,
+        "map_default_zoom": settings.MAP_DEFAULT_ZOOM,
+        "map_max_zoom": settings.MAP_MAX_ZOOM
     })
 
 # 配置主页
@@ -28,7 +30,9 @@ async def read_login(request: Request):
 async def read_home(request: Request):
     return templates.TemplateResponse("index.html", {
         "request": request,
-        "amap_api_key": settings.AMAP_API_KEY
+        "map_tile_path": settings.MAP_TILE_PATH,
+        "map_default_zoom": settings.MAP_DEFAULT_ZOOM,
+        "map_max_zoom": settings.MAP_MAX_ZOOM
     })
 
 # 配置任务管理页面
@@ -36,17 +40,21 @@ async def read_home(request: Request):
 async def read_task(request: Request):
     return templates.TemplateResponse("task.html", {
         "request": request,
-        "amap_api_key": settings.AMAP_API_KEY
+        "map_tile_path": settings.MAP_TILE_PATH,
+        "map_default_zoom": settings.MAP_DEFAULT_ZOOM,
+        "map_max_zoom": settings.MAP_MAX_ZOOM
     })
 
 # 配置任务详情页面
 @router.get("/upload")
 async def read_upload(request: Request):
     # 添加日志，检查传递的参数
-    print(f"提供API密钥: {settings.AMAP_API_KEY}")
+    print(f"使用离线地图: 路径={settings.MAP_TILE_PATH}")
     return templates.TemplateResponse("upload.html", {
         "request": request,
-        "amap_api_key": settings.AMAP_API_KEY
+        "map_tile_path": settings.MAP_TILE_PATH,
+        "map_default_zoom": settings.MAP_DEFAULT_ZOOM,
+        "map_max_zoom": settings.MAP_MAX_ZOOM
     })
 
 # 配置任务图片列表页面
@@ -54,7 +62,9 @@ async def read_upload(request: Request):
 async def read_image(request: Request):
     return templates.TemplateResponse("image.html", {
         "request": request,
-        "amap_api_key": settings.AMAP_API_KEY
+        "map_tile_path": settings.MAP_TILE_PATH,
+        "map_default_zoom": settings.MAP_DEFAULT_ZOOM,
+        "map_max_zoom": settings.MAP_MAX_ZOOM
     })
 
 # 配置管理员页面
@@ -62,7 +72,9 @@ async def read_image(request: Request):
 async def read_admin(request: Request):
     return templates.TemplateResponse("admin.html", {
         "request": request,
-        "amap_api_key": settings.AMAP_API_KEY
+        "map_tile_path": settings.MAP_TILE_PATH,
+        "map_default_zoom": settings.MAP_DEFAULT_ZOOM,
+        "map_max_zoom": settings.MAP_MAX_ZOOM
     })
 
 # 添加一个测试路由
