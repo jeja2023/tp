@@ -184,12 +184,9 @@
                 window.AMap.Config = {
                     offline: true,
                     version: '2.0.1',
-                    baseUrl: '/static/js/MAP_zxy/',
-                    maxZoom: 11,
-                    disableOnline: true,
-                    pluginDir: '/static/js/amap/mapsplugins/',
-                    mapStyle: 'normal',
-                    mapDir: '/static/js/amap/'
+                    baseUrl: '/frontend/static/js/MAP_zxy/',
+                    maxZoom: 12,
+                    disableOnline: true
                 };
                 
                 // 重写AMap.plugin方法，阻止在线加载
@@ -212,8 +209,8 @@
                 // 重写AMap.TileLayer.prototype.getTileUrl方法
                 if (window.AMap.TileLayer) {
                     window.AMap.TileLayer.prototype.getTileUrl = function(x, y, z) {
-                        if (z > 11) z = 11;
-                        return `/static/js/MAP_zxy/${z}/${x}/${y}.png`;
+                        if (z > 12) z = 12;
+                        return `/frontend/static/js/MAP_zxy/${z}/${x}/${y}.png`;
                     };
                 }
 
@@ -230,12 +227,12 @@
                     options.showIndoorMap = false;
                     options.showLabel = false;
                     options.offline = true;
-                    options.zooms = [1, 11];
+                    options.zooms = [1, 12];
                     options.version = '2.0.1';
-                    options.pluginDir = '/static/js/amap/mapsplugins/';
+                    options.pluginDir = '/frontend/static/js/amap/mapsplugins/';
                     options.mapStyle = 'normal';
                     options.defaultLayer = false;
-                    options.mapDir = '/static/js/amap/';
+                    options.mapDir = '/frontend/static/js/amap/';
                     return new originalMap(container, options);
                 };
 
@@ -244,14 +241,14 @@
                 window.AMap.TileLayer = function(options) {
                     options = options || {};
                     options.getTileUrl = function(x, y, z) {
-                        if (z > 11) z = 11;
-                        return `/static/js/MAP_zxy/${z}/${x}/${y}.png`;
+                        if (z > 12) z = 12;
+                        return `/frontend/static/js/MAP_zxy/${z}/${x}/${y}.png`;
                     };
                     options.offline = true;
-                    options.zooms = [1, 11];
+                    options.zooms = [1, 12];
                     options.version = '2.0.1';
                     options.mapStyle = 'normal';
-                    options.mapDir = '/static/js/amap/';
+                    options.mapDir = '/frontend/static/js/amap/';
                     return new originalTileLayer(options);
                 };
                 

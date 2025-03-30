@@ -73,7 +73,7 @@ function initMap() {
             // 创建地图实例
             window.map = new window.AMap.Map(mapContainer, {
                 viewMode: '2D',  // 使用2D视图
-                zoom: 13,
+                zoom: 11,  // 设置默认缩放级别为11
                 center: [116.397428, 39.90923],
                 resizeEnable: true,
                 isHotspot: false,  // 禁用热点和标注
@@ -81,7 +81,7 @@ function initMap() {
                 showBuildingBlock: false,  // 不显示3D建筑物
                 layers: [],  // 先不设置图层，由setupMapLayers控制
                 offline: true,  // 启用离线模式
-                zooms: [1, 11],  // 限制缩放级别
+                zooms: [1, 12],  // 限制缩放级别
                 features: ['bg', 'building'],  // 只显示基础图层
                 showRoad: false,  // 不显示道路
                 showTraffic: false,  // 不显示交通
@@ -124,6 +124,14 @@ function setupMapLayers() {
         // 添加标准矢量图层并设置为可见
         window.vectorLayer.setMap(window.map);           
         console.log('地图图层设置完成，包括矢量图层');
+
+        // 重写AMap.TileLayer.prototype.getTileUrl方法
+        if (window.AMap.TileLayer) {
+            window.AMap.TileLayer.prototype.getTileUrl = function(x, y, z) {
+                if (z > 12) z = 12;
+                return `/frontend/static/js/MAP_zxy/${z}/${x}/${y}.png`;
+            };
+        }
     } catch (error) {
         console.error('设置地图图层出错:', error);
     }
