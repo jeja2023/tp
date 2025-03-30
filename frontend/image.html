@@ -38,7 +38,7 @@
                                 offline: true,
                                 version: '2.0.1',
                                 baseUrl: '/frontend/static/js/MAP_zxy/',
-                                maxZoom: 11,
+                                maxZoom: 12,
                                 disableOnline: true  // 添加此行以禁用在线资源
                             };
                             
@@ -55,7 +55,7 @@
                             // 重写AMap.TileLayer.prototype.getTileUrl方法
                             if (window.AMap.TileLayer) {
                                 window.AMap.TileLayer.prototype.getTileUrl = function(x, y, z) {
-                                    if (z > 11) z = 11;
+                                    if (z > 12) z = 12;
                                     return `/frontend/static/js/MAP_zxy/${z}/${x}/${y}.png`;
                                 };
                             }
@@ -73,6 +73,7 @@
                                 options.showIndoorMap = false;
                                 options.showLabel = false;
                                 options.offline = true;  // 添加此行以启用离线模式
+                                options.zooms = [1, 12];  // 添加此行以设置缩放级别范围
                                 return new originalMap(container, options);
                             };
 
@@ -81,10 +82,11 @@
                             window.AMap.TileLayer = function(options) {
                                 options = options || {};
                                 options.getTileUrl = function(x, y, z) {
-                                    if (z > 11) z = 11;
+                                    if (z > 12) z = 12;
                                     return `/frontend/static/js/MAP_zxy/${z}/${x}/${y}.png`;
                                 };
                                 options.offline = true;  // 添加此行以启用离线模式
+                                options.zooms = [1, 12];  // 添加此行以设置缩放级别范围
                                 return new originalTileLayer(options);
                             };
                             
@@ -1345,7 +1347,7 @@
                     zoom: 11,  // 设置默认缩放级别为11
                     center: [116.397428, 39.90923],
                     resizeEnable: true,
-                    zooms: [1, 11],  // 限制缩放级别范围
+                    zooms: [1, 12],  // 限制缩放级别范围
                     features: ['bg', 'building'],  // 只显示背景和建筑物
                     dragEnable: true,  // 允许拖动
                     zoomEnable: true,  // 允许缩放
@@ -1387,10 +1389,10 @@
                 window.vectorLayer = new window.AMap.TileLayer({
                     zIndex: 0,
                     visible: true,
-                    zooms: [1, 11],  // 限制图层缩放级别范围
+                    zooms: [1, 12],  // 限制图层缩放级别范围
                     getTileUrl: function(x, y, z) {
-                        // 确保缩放级别不超过11
-                        if (z > 11) z = 11;
+                        // 确保缩放级别不超过12
+                        if (z > 12) z = 12;
                         // 使用本地离线地图瓦片
                         return `/frontend/static/js/MAP_zxy/${z}/${x}/${y}.png`;
                     }
