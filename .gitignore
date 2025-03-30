@@ -119,4 +119,8 @@ lib64
 **/api_keys.local.json
 **/tokens.local.json
 **/keys.local.json
-**/auth.local.json 
+**/auth.local.json
+
+# 地图数据目录
+frontend/static/js/MAP_zxy/*
+!frontend/static/js/MAP_zxy/.gitkeep 

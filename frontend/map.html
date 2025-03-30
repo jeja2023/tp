@@ -6,7 +6,7 @@
     <title>地图功能</title>
     <link rel="stylesheet" href="/static/css/styles.css">
     <link rel="stylesheet" href="/static/css/all.min.css">
-    <script src="https://webapi.amap.com/maps?v=2.0&key={{ amap_api_key }}"></script>
+    <script src="/static/js/amap/AMap3.js"></script>
     <script src="/static/js/xlsx.full.min.js"></script>
     <style>
         .map-container {
@@ -144,9 +144,6 @@
 
     <div class="map-controls">
         <button id="import-gps-btn" class="btn">批量导入GPS</button>
-        <button id="layer-control-btn" class="btn" onclick="toggleLayerControl()">
-            <i class="fas fa-layer-group"></i> 图层控制
-        </button>
     </div>
 
     <div class="map-container">
@@ -165,10 +162,13 @@
         </div>
     </div>
 
+    <script src="/static/js/amap/AMap3.js"></script>
+    <script src="/static/js/amap/mapsplugin.js"></script>
+    <script src="/static/js/xlsx.full.min.js"></script>
     <script src="/static/js/map.js"></script>
     <script>
         // 等待高德地图API加载完成
-        window.onload = function() {
+        window.onload = async function() {
             // 获取并显示用户名
             const username = localStorage.getItem('username');
             if (username) {
@@ -179,20 +179,98 @@
                 return;
             }
 
-            // 触发高德地图API加载完成事件
-            const amapLoadedEvent = new Event('amap-loaded');
-            window.dispatchEvent(amapLoadedEvent);
-            
-            // 初始化地图
-            initMap().then(() => {
-                console.log('地图初始化完成');
-                // 设置地图相关事件
-                setupMapEvents();
-                // 添加图层控制按钮
-                addLayerControlButton();
-            }).catch(error => {
+            try {
+                // 设置全局配置
+                window.AMap.Config = {
+                    offline: true,
+                    version: '2.0.1',
+                    baseUrl: '/static/js/MAP_zxy/',
+                    maxZoom: 11,
+                    disableOnline: true,
+                    pluginDir: '/static/js/amap/mapsplugins/',
+                    mapStyle: 'normal',
+                    mapDir: '/static/js/amap/'
+                };
+                
+                // 重写AMap.plugin方法，阻止在线加载
+                window.AMap.plugin = function(plugins, callback) {
+                    if (callback) callback();
+                };
+                
+                // 重写AMap.load方法，阻止在线加载
+                window.AMap.load = function(plugins, callback) {
+                    if (callback) callback();
+                };
+                
+                // 重写资源加载方法，使用本地2.0.1文件
+                window.AMap.Wn = {
+                    fn: function() {
+                        return Promise.resolve('/static/js/amap/2.0.1');
+                    }
+                };
+                
+                // 重写AMap.TileLayer.prototype.getTileUrl方法
+                if (window.AMap.TileLayer) {
+                    window.AMap.TileLayer.prototype.getTileUrl = function(x, y, z) {
+                        if (z > 11) z = 11;
+                        return `/static/js/MAP_zxy/${z}/${x}/${y}.png`;
+                    };
+                }
+
+                // 重写AMap.Map构造函数
+                const originalMap = window.AMap.Map;
+                window.AMap.Map = function(container, options) {
+                    options = options || {};
+                    options.layers = [];
+                    options.features = ['bg', 'building'];
+                    options.showRoad = false;
+                    options.showTraffic = false;
+                    options.showPOI = false;
+                    options.showBuilding = false;
+                    options.showIndoorMap = false;
+                    options.showLabel = false;
+                    options.offline = true;
+                    options.zooms = [1, 11];
+                    options.version = '2.0.1';
+                    options.pluginDir = '/static/js/amap/mapsplugins/';
+                    options.mapStyle = 'normal';
+                    options.defaultLayer = false;
+                    options.mapDir = '/static/js/amap/';
+                    return new originalMap(container, options);
+                };
+
+                // 重写AMap.TileLayer构造函数
+                const originalTileLayer = window.AMap.TileLayer;
+                window.AMap.TileLayer = function(options) {
+                    options = options || {};
+                    options.getTileUrl = function(x, y, z) {
+                        if (z > 11) z = 11;
+                        return `/static/js/MAP_zxy/${z}/${x}/${y}.png`;
+                    };
+                    options.offline = true;
+                    options.zooms = [1, 11];
+                    options.version = '2.0.1';
+                    options.mapStyle = 'normal';
+                    options.mapDir = '/static/js/amap/';
+                    return new originalTileLayer(options);
+                };
+                
+                console.log('高德地图API加载完成');
+                
+                try {
+                    // 初始化地图
+                    await initMap();
+                    console.log('地图初始化完成');
+                    
+                    // 设置地图相关事件
+                    setupMapEvents();
+                } catch (error) {
+                    console.error('地图初始化失败:', error);
+                    alert('地图初始化失败: ' + error.message);
+                }
+            } catch (error) {
                 console.error('地图初始化失败:', error);
-            });
+            }
         };
 
         // 退出登录

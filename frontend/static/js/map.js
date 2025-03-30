@@ -5,13 +5,6 @@ let map = null;
 let marker = null;
 let pathLayer = null; // 用于存储路径图层
 let markersLayer = null; // 用于存储批量导入的标记点
-let districtLayer = null; // 用于存储行政区域边界
-let trafficLayer = null; // 用于存储交通路况图层
-let satelliteLayer = null; // 用于存储卫星图层
-let roadNetLayer = null; // 用于存储路网图层
-let standardLayer = null; // 用于存储标准矢量图层
-let layerControl = null; // 用于存储图层控制面板
-let customLayerControl = null; // 自定义图层控制面板
 let gpsData = [];
 
 // 监听高德地图API加载完成事件
@@ -32,76 +25,6 @@ window.addEventListener('amap-loaded', function() {
     }
 });
 
-// 切换地图容器的显示和隐藏
-function toggleMapContainer() {
-    // 获取DOM元素
-    const mapContainer = document.getElementById('map-container');
-    const showMapBtn = document.getElementById('show-map-btn');
-    
-    if (!mapContainer) {
-        console.error('找不到地图容器元素 #map-container');
-        return;
-    }
-    
-    // 使用getComputedStyle获取实际计算后的样式
-    const computedStyle = window.getComputedStyle(mapContainer);
-    const displayStyle = computedStyle.display;
-    const isCurrentlyHidden = displayStyle === 'none';
-    
-    console.log('切换地图显示状态:', 
-                '计算样式:', displayStyle, 
-                '是否隐藏:', isCurrentlyHidden, 
-                '按钮文本:', showMapBtn ? showMapBtn.textContent : 'null');
-    
-    if (isCurrentlyHidden) {
-        // 从隐藏变为显示
-        console.log('准备显示地图');
-        
-        try {
-            // 确保显示容器
-            mapContainer.style.display = 'block';
-            console.log('地图容器设置为显示 block');
-            
-            // 显示地图时初始化
-            if (!map) {
-                console.log('地图未初始化，正在初始化...');
-                setTimeout(function() {
-                    initMap();
-                }, 100);
-            } else {
-                console.log('地图已初始化，刷新大小');
-                map.setFitView();
-            }
-            
-            // 更新按钮文本和状态
-            if (showMapBtn) {
-                showMapBtn.textContent = '隐藏地图';
-                // 记录地图可见状态
-                showMapBtn.dataset.mapVisible = 'true';
-                console.log('按钮文本更新为：隐藏地图，状态设置为可见');
-            }
-        } catch (error) {
-            console.error('显示地图时发生错误:', error);
-        }
-    } else {
-        // 从显示变为隐藏
-        try {
-            console.log('准备隐藏地图');
-            mapContainer.style.display = 'none';
-            
-            // 更新按钮文本和状态
-            if (showMapBtn) {
-                showMapBtn.textContent = '显示地图';
-                // 记录地图隐藏状态
-                showMapBtn.dataset.mapVisible = 'false';
-                console.log('按钮文本更新为：显示地图，状态设置为隐藏');
-            }
-        } catch (error) {
-            console.error('隐藏地图时发生错误:', error);
-        }
-    }
-}
-
 // 设置地图相关事件
 function setupMapEvents() {
     // 避免重复注册事件
@@ -119,6 +42,90 @@ function setupMapEvents() {
         importGpsBtn.addEventListener('click', function() {
             showGpsImportDialog();
         });
+    }
+}
+
+// 初始化地图
+function initMap() {
+    return new Promise((resolve, reject) => {
+        if (window.map) {
+            console.log('地图已经初始化');
+            resolve(window.map);
+            return;
+        }
+        
+        try {
+            console.log('开始初始化地图');
+            const mapContainer = document.getElementById('map-container');
+            
+            if (!mapContainer) {
+                console.error('找不到地图容器元素');
+                reject(new Error('找不到地图容器元素'));
+                return;
+            }
+            
+            if (!window.AMap) {
+                console.error('高德地图API尚未加载完成');
+                reject(new Error('地图组件尚未完成加载，请稍后再试'));
+                return;
+            }
+            
+            // 创建地图实例
+            window.map = new window.AMap.Map(mapContainer, {
+                viewMode: '2D',  // 使用2D视图
+                zoom: 13,
+                center: [116.397428, 39.90923],
+                resizeEnable: true,
+                isHotspot: false,  // 禁用热点和标注
+                defaultCursor: 'default',  // 设置默认光标样式
+                showBuildingBlock: false,  // 不显示3D建筑物
+                layers: [],  // 先不设置图层，由setupMapLayers控制
+                offline: true,  // 启用离线模式
+                zooms: [1, 11],  // 限制缩放级别
+                features: ['bg', 'building'],  // 只显示基础图层
+                showRoad: false,  // 不显示道路
+                showTraffic: false,  // 不显示交通
+                showPOI: false,  // 不显示兴趣点
+                showBuilding: false,  // 不显示建筑物
+                showIndoorMap: false,  // 不显示室内地图
+                showLabel: false  // 不显示标签
+            });
+            
+            // 添加图层控制
+            setupMapLayers();
+            
+            console.log('地图初始化完成');
+            
+            // 触发resize事件，确保地图完全渲染
+            setTimeout(() => {
+                if (window.map) {
+                    window.map.resize();
+                    resolve(window.map);
+                }
+            }, 200);
+        } catch (error) {
+            console.error('初始化地图出错:', error);
+            reject(error);
+        }
+    });
+}
+
+// 设置地图图层
+function setupMapLayers() {
+    if (!window.map) return;
+    
+    try {
+        // 创建标准矢量图层
+        window.vectorLayer = new window.AMap.TileLayer({
+            zIndex: 0,
+            visible: true
+        });               
+        
+        // 添加标准矢量图层并设置为可见
+        window.vectorLayer.setMap(window.map);           
+        console.log('地图图层设置完成，包括矢量图层');
+    } catch (error) {
+        console.error('设置地图图层出错:', error);
     }
 }
 
@@ -979,471 +986,15 @@ window.mapUtils = {
     showGpsImportDialog: showGpsImportDialog,
     handleExcelUpload: handleExcelUpload,
     showExcelPreview: showExcelPreview,
-    processImportedGps: processImportedGps,
-    toggleMapContainer: toggleMapContainer,
-    toggleLayerControl: toggleLayerControl
+    processImportedGps: processImportedGps
 };
 
 // 导出独立函数，确保能直接调用
 window.showGpsImportDialog = showGpsImportDialog;
 window.plotImagesOnMap = plotImagesOnMap;
-window.toggleMapContainer = toggleMapContainer;
-window.toggleLayerControl = toggleLayerControl;
 
 // 导出地图初始化函数
 window.initMap = initMap;
 
 // 导出更新预览函数
-window.updatePreview = updatePreview;
-
-// 创建自定义图层控制面板
-function createLayerControl() {
-    if (customLayerControl) {
-        return; // 已经创建过了
-    }
-
-    console.log('创建自定义图层控制面板...');
-
-    // 创建控制面板容器 - 调整位置和样式
-    customLayerControl = document.createElement('div');
-    customLayerControl.className = 'layer-control';
-    customLayerControl.style.cssText = 'position: absolute; top: 80px; right: 10px; background: rgba(255, 255, 255, 0.95); border-radius: 8px; padding: 12px; z-index: 100; color: #333; font-size: 13px; box-shadow: 0 3px 10px rgba(0,0,0,0.1); border: 1px solid rgba(0,0,0,0.1); backdrop-filter: blur(4px); min-width: 180px;';
-
-    // 创建标题
-    const title = document.createElement('div');
-    title.innerHTML = '<i class="fas fa-layer-group" style="margin-right: 6px;"></i>图层控制';
-    title.style.cssText = 'font-weight: bold; margin-bottom: 10px; font-size: 15px; color: #333; text-align: center; padding-bottom: 8px; border-bottom: 1px solid rgba(0,0,0,0.1); letter-spacing: 1px;';
-    customLayerControl.appendChild(title);
-
-    // 添加图层分组标题
-    const baseLayersTitle = document.createElement('div');
-    baseLayersTitle.innerHTML = '基础图层';
-    baseLayersTitle.style.cssText = 'font-size: 12px; color: #666; margin: 10px 0 5px 0; font-weight: bold;';
-    customLayerControl.appendChild(baseLayersTitle);
-
-    // 添加基础图层选项（单选）
-    const baseLayersGroup = document.createElement('div');
-    baseLayersGroup.style.cssText = 'margin-bottom: 10px; padding-left: 5px;';
-    customLayerControl.appendChild(baseLayersGroup);
-
-    // 添加标准地图图层（默认选中）
-    addRadioOption(baseLayersGroup, 'standard-layer', '标准地图', true, function(checked) {
-        if (checked) {
-            toggleStandardLayer(true);
-            toggleSatelliteLayer(false);
-        }
-    });
-
-    // 添加卫星图层
-    addRadioOption(baseLayersGroup, 'satellite-layer', '卫星影像', false, function(checked) {
-        if (checked) {
-            toggleStandardLayer(false);
-            toggleSatelliteLayer(true);
-        }
-    });
-
-    // 添加覆盖图层标题
-    const overlaysTitle = document.createElement('div');
-    overlaysTitle.innerHTML = '覆盖图层';
-    overlaysTitle.style.cssText = 'font-size: 12px; color: #aaa; margin: 10px 0 5px 0; font-weight: bold;';
-    customLayerControl.appendChild(overlaysTitle);
-
-    // 添加覆盖图层选项（复选）
-    const overlaysGroup = document.createElement('div');
-    overlaysGroup.style.cssText = 'padding-left: 5px;';
-    customLayerControl.appendChild(overlaysGroup);
-
-    // 添加路网图层选项
-    addCheckboxOption(overlaysGroup, 'road-net-layer', '路网图层', false, function(checked) {
-        toggleRoadNetLayer(checked);
-    });
-
-    // 添加交通路况图层选项
-    addCheckboxOption(overlaysGroup, 'traffic-layer', '交通路况', false, function(checked) {
-        toggleTrafficLayer(checked);
-    });
-
-    // 添加行政区域图层选项
-    addCheckboxOption(overlaysGroup, 'district-layer', '行政区域', false, function(checked) {
-        toggleDistrictLayer(checked);
-    });
-
-    // 添加控制按钮容器
-    const buttonsContainer = document.createElement('div');
-    buttonsContainer.style.cssText = 'display: flex; justify-content: space-between; margin-top: 15px;';
-    customLayerControl.appendChild(buttonsContainer);
-
-    // 添加关闭按钮
-    const closeBtn = document.createElement('button');
-    closeBtn.innerHTML = '关闭';
-    closeBtn.style.cssText = 'text-align: center; padding: 6px 12px; border-radius: 4px; background: #e74c3c; cursor: pointer; font-weight: bold; font-size: 12px; border: none; color: white; flex: 1; margin-right: 5px; transition: all 0.2s;';
-    closeBtn.onmouseover = function() { this.style.backgroundColor = '#c0392b'; };
-    closeBtn.onmouseout = function() { this.style.backgroundColor = '#e74c3c'; };
-    closeBtn.onclick = function() {
-        customLayerControl.style.display = 'none';
-    };
-    buttonsContainer.appendChild(closeBtn);
-
-    // 添加重置按钮
-    const resetBtn = document.createElement('button');
-    resetBtn.innerHTML = '重置';
-    resetBtn.style.cssText = 'text-align: center; padding: 6px 12px; border-radius: 4px; background: #3498db; cursor: pointer; font-weight: bold; font-size: 12px; border: none; color: white; flex: 1; margin-left: 5px; transition: all 0.2s;';
-    resetBtn.onmouseover = function() { this.style.backgroundColor = '#2980b9'; };
-    resetBtn.onmouseout = function() { this.style.backgroundColor = '#3498db'; };
-    resetBtn.onclick = function() {
-        resetAllLayers();
-    };
-    buttonsContainer.appendChild(resetBtn);
-
-    // 将控制面板添加到地图容器中
-    const mapContainer = document.getElementById('map-container');
-    if (mapContainer) {
-        mapContainer.appendChild(customLayerControl);
-    }
-
-    // 辅助函数：添加复选框选项
-    function addCheckboxOption(container, id, text, initialState, callback) {
-        const item = document.createElement('div');
-        item.style.cssText = 'margin: 8px 0; display: flex; align-items: center;';
-
-        const checkbox = document.createElement('input');
-        checkbox.type = 'checkbox';
-        checkbox.id = id;
-        checkbox.checked = initialState;
-        checkbox.style.cssText = 'margin-right: 8px; cursor: pointer; width: 16px; height: 16px;';
-        checkbox.onchange = function() {
-            callback(this.checked);
-        };
-
-        const label = document.createElement('label');
-        label.htmlFor = id;
-        label.textContent = text;
-        label.style.cssText = 'cursor: pointer; flex: 1; font-size: 13px;';
-
-        item.appendChild(checkbox);
-        item.appendChild(label);
-        container.appendChild(item);
-    }
-
-    // 辅助函数：添加单选按钮选项
-    function addRadioOption(container, id, text, initialState, callback) {
-        const item = document.createElement('div');
-        item.style.cssText = 'margin: 8px 0; display: flex; align-items: center;';
-
-        const radio = document.createElement('input');
-        radio.type = 'radio';
-        radio.id = id;
-        radio.name = 'base-layer';
-        radio.checked = initialState;
-        radio.style.cssText = 'margin-right: 8px; cursor: pointer; width: 16px; height: 16px;';
-        radio.onchange = function() {
-            callback(this.checked);
-        };
-
-        const label = document.createElement('label');
-        label.htmlFor = id;
-        label.textContent = text;
-        label.style.cssText = 'cursor: pointer; flex: 1; font-size: 13px;';
-
-        item.appendChild(radio);
-        item.appendChild(label);
-        container.appendChild(item);
-    }
-}
-
-// 重置所有图层到默认状态
-function resetAllLayers() {
-    // 重置基础图层
-    toggleStandardLayer(true);
-    toggleSatelliteLayer(false);
-    
-    // 重置覆盖图层
-    toggleRoadNetLayer(false);
-    toggleTrafficLayer(false);
-    toggleDistrictLayer(false);
-    
-    // 更新图层控制面板中的复选框状态
-    if (customLayerControl) {
-        const standardRadio = document.getElementById('standard-layer');
-        if (standardRadio) standardRadio.checked = true;
-        
-        const satelliteRadio = document.getElementById('satellite-layer');
-        if (satelliteRadio) satelliteRadio.checked = false;
-        
-        const roadNetCheckbox = document.getElementById('road-net-layer');
-        if (roadNetCheckbox) roadNetCheckbox.checked = false;
-        
-        const trafficCheckbox = document.getElementById('traffic-layer');
-        if (trafficCheckbox) trafficCheckbox.checked = false;
-        
-        const districtCheckbox = document.getElementById('district-layer');
-        if (districtCheckbox) districtCheckbox.checked = false;
-    }
-}
-
-// 显示/隐藏图层控制面板
-function toggleLayerControl() {
-    if (!customLayerControl) {
-        createLayerControl();
-    } else {
-        customLayerControl.style.display = customLayerControl.style.display === 'none' ? 'block' : 'none';
-    }
-}
-
-// 切换标准矢量地图图层
-function toggleStandardLayer(visible) {
-    if (!map) return;
-
-    try {
-        if (visible) {
-            // 切换到标准矢量地图样式
-            map.setMapStyle('amap://styles/normal');
-            console.log('切换到标准矢量地图图层');
-        } else {
-            // 如果关闭标准图层但卫星图层未开启，保持标准图层显示
-            if (!satelliteLayer) {
-                map.setMapStyle('amap://styles/normal');
-            }
-        }
-    } catch (error) {
-        console.error('切换标准矢量地图图层时出错:', error);
-    }
-}
-
-// 切换卫星图层
-function toggleSatelliteLayer(visible) {
-    if (!map) return;
-
-    try {
-        if (visible) {
-            if (!satelliteLayer) {
-                satelliteLayer = new AMap.TileLayer.Satellite();
-                map.add(satelliteLayer);
-                // 切换到卫星地图样式
-                map.setMapStyle('amap://styles/dark');
-                console.log('添加卫星图层');
-            }
-        } else {
-            if (satelliteLayer) {
-                map.remove(satelliteLayer);
-                satelliteLayer = null;
-                // 重置为标准地图样式
-                map.setMapStyle('amap://styles/normal');
-                console.log('移除卫星图层');
-            }
-        }
-    } catch (error) {
-        console.error('切换卫星图层时出错:', error);
-    }
-}
-
-// 切换交通路况图层
-function toggleTrafficLayer(visible) {
-    if (!map) return;
-
-    try {
-        if (visible) {
-            if (!trafficLayer) {
-                trafficLayer = new AMap.TileLayer.Traffic();
-                map.add(trafficLayer);
-                console.log('添加交通路况图层');
-            }
-        } else {
-            if (trafficLayer) {
-                map.remove(trafficLayer);
-                trafficLayer = null;
-                console.log('移除交通路况图层');
-            }
-        }
-    } catch (error) {
-        console.error('切换交通路况图层时出错:', error);
-    }
-}
-
-// 切换路网图层
-function toggleRoadNetLayer(visible) {
-    if (!map) return;
-
-    try {
-        if (visible) {
-            if (!roadNetLayer) {
-                roadNetLayer = new AMap.TileLayer.RoadNet();
-                map.add(roadNetLayer);
-                console.log('添加路网图层');
-            }
-        } else {
-            if (roadNetLayer) {
-                map.remove(roadNetLayer);
-                roadNetLayer = null;
-                console.log('移除路网图层');
-            }
-        }
-    } catch (error) {
-        console.error('切换路网图层时出错:', error);
-    }
-}
-
-// 切换行政区域边界图层
-function toggleDistrictLayer(visible) {
-    if (!map) return;
-
-    try {
-        if (visible) {
-            if (!districtLayer) {
-                // 加载行政区域插件
-                AMap.plugin('AMap.DistrictSearch', function() {
-                    const districtSearch = new AMap.DistrictSearch({
-                        level: 'district',
-                        showbiz: false,
-                        extensions: 'all'
-                    });
-                    
-                    // 默认显示全国
-                    districtSearch.search('中国', function(status, result) {
-                        if (status === 'complete') {
-                            const boundaries = result.districtList[0].boundaries;
-                            if (boundaries) {
-                                districtLayer = new AMap.PolygonLayer({
-                                    strokeWeight: 1,
-                                    strokeColor: '#0091ea',
-                                    strokeOpacity: 0.5,
-                                    fillColor: '#1791fc',
-                                    fillOpacity: 0.1
-                                });
-                                
-                                const polygons = [];
-                                for (let i = 0; i < boundaries.length; i++) {
-                                    const polygon = new AMap.Polygon({
-                                        path: boundaries[i],
-                                        strokeColor: '#0091ea',
-                                        strokeWeight: 1,
-                                        strokeOpacity: 0.5,
-                                        fillColor: '#1791fc',
-                                        fillOpacity: 0.1
-                                    });
-                                    polygons.push(polygon);
-                                }
-                                
-                                map.add(polygons);
-                                console.log('添加行政区域边界图层');
-                            }
-                        } else {
-                            console.error('获取行政区域边界失败');
-                        }
-                    });
-                });
-            }
-        } else {
-            if (districtLayer) {
-                map.remove(districtLayer);
-                districtLayer = null;
-                console.log('移除行政区域边界图层');
-            }
-        }
-    } catch (error) {
-        console.error('切换行政区域边界图层时出错:', error);
-    }
-}
-
-// 初始化地图
-async function initMap() {
-    console.log('开始初始化地图...');
-    const mapContainer = document.getElementById('map-container');
-    if (!mapContainer) {
-        console.error('找不到地图容器元素');
-        return;
-    }
-
-    // 创建地图实例
-    map = new AMap.Map('map-container', {
-        zoom: 12,
-        center: [116.397428, 39.90923], // 北京天安门坐标
-        viewMode: '2D',
-        resizeEnable: true,
-        mapStyle: 'amap://styles/normal',
-        features: ['bg', 'road', 'building', 'point', 'boundary'],
-        showIndoorMap: false,
-        defaultCursor: 'pointer',
-        zooms: [3, 20],
-        jogEnable: true,
-        animateEnable: true,
-        dragEnable: true,
-        zoomEnable: true,
-        doubleClickZoom: true,
-        keyboardEnable: false,
-        jogEnable: true,
-        scrollWheel: true,
-        touchZoom: true,
-        showBuildingBlock: true,
-        showIndoorMap: false,
-        expandZoomRange: true,
-        zooms: [3, 20],
-        layers: [
-            new AMap.TileLayer({
-                zIndex: 1,
-                opacity: 1,
-                getTileUrl: function(x, y, z) {
-                    return 'https://webst01.is.autonavi.com/appmaptile?style=7&x=' + x + '&y=' + y + '&z=' + z;
-                }
-            })
-        ]
-    });
-
-    // 添加地图控件
-    map.addControl(new AMap.Scale({
-        position: 'LB',
-        theme: 'dark'
-    }));
-    
-    map.addControl(new AMap.ControlBar({
-        position: {
-            right: '10px',
-            bottom: '10px'
-        },
-        theme: 'dark'
-    }));
-
-    console.log('地图初始化完成');
-}
-
-// 修改图层控制按钮位置
-function addLayerControlButton() {
-    try {
-        if (!map) return;
-        
-        // 创建自定义控件 - 调整位置
-        const layerControlBtn = document.createElement('div');
-        layerControlBtn.className = 'amap-control-item layer-control-btn';
-        layerControlBtn.style.cssText = 'width: 38px; height: 38px; background: rgba(31, 31, 31, 0.9); border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.3); cursor: pointer; display: flex; justify-content: center; align-items: center; margin: 10px; color: white; font-size: 16px; position: absolute; top: 80px; right: 12px; z-index: 90; transition: all 0.3s ease;';
-        layerControlBtn.innerHTML = '<i style="font-size: 18px;" class="fas fa-layer-group"></i>';
-        layerControlBtn.title = '图层控制';
-        
-        // 添加交互效果
-        layerControlBtn.onmouseover = function() {
-            this.style.backgroundColor = 'rgba(40, 40, 40, 0.95)';
-            this.style.transform = 'scale(1.05)';
-        };
-        
-        layerControlBtn.onmouseout = function() {
-            this.style.backgroundColor = 'rgba(31, 31, 31, 0.9)';
-            this.style.transform = 'scale(1)';
-        };
-        
-        // 添加点击事件
-        layerControlBtn.onclick = function() {
-            toggleLayerControl();
-        };
-        
-        // 将按钮添加到地图容器
-        const mapContainer = document.getElementById('map-container');
-        if (mapContainer) {
-            mapContainer.appendChild(layerControlBtn);
-        }
-        
-        // 初始化图层控制面板
-        createLayerControl();
-        
-    } catch (error) {
-        console.error('添加图层控制按钮时出错:', error);
-    }
-} 
+window.updatePreview = updatePreview; 
