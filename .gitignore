@@ -45,6 +45,11 @@ logs/*
 .env.local
 .env.*.local
 
+# 密钥管理相关
+keybackups/*
+!keybackups/.gitkeep
+last_key_rotation.txt
+
 # 数据库
 *.sqlite3
 *.db
