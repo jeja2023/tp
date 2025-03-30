@@ -479,6 +479,30 @@
         .secondary-btn:hover {
             background-color: #5a6268;
         }
+
+        /* 文件选择按钮样式 */
+        .file-upload-label {
+            display: inline-block;
+            padding: 8px 16px;
+            background-color: #3498db;
+            color: white;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .file-upload-label:hover {
+            background-color: #2980b9;
+        }
+
+        .file-upload-container {
+            margin-bottom: 15px;
+        }
+
+        /* 隐藏原始的文件输入框 */
+        input[type="file"] {
+            display: none;
+        }
     </style>
 </head>
 <body>
@@ -496,7 +520,7 @@
     <div class="page-container">
         <!-- 左侧任务信息栏 -->
         <div class="task-info-sidebar">
-            <button id="back-to-tasks-btn" class="btn secondary-btn">返回任务详情</button>
+            <button id="back-to-tasks-btn" class="btn primary-btn">返回任务详情</button>
             <h2>任务: <span id="current-task-title"></span></h2>
             <p id="current-task-description"></p>
             <div class="task-meta">
@@ -583,7 +607,7 @@
                             <div id="people-container">
                                 <!-- 人员表单将在这里动态添加 -->
                             </div>
-                            <button type="button" id="add-person-btn" class="btn secondary-btn">添加人员</button>
+                            <button type="button" id="add-person-btn" class="btn primary-btn">添加人员</button>
                         </div>
                     </div>
                     
