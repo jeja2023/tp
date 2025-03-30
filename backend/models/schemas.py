@@ -90,7 +90,7 @@ class TaskPermissionCreate(TaskPermissionBase):
     
 class TaskPermission(TaskPermissionBase):
     id: int
-    user_id: int
+    user_id: Optional[int] = None  # 允许为空
     task_id: int
 
     class Config:
