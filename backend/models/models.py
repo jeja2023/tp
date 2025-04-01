@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 # Database models for the application
 
 from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, Text, Float, DateTime

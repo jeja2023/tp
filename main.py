@@ -1,4 +1,7 @@
-from fastapi import FastAPI, Request, HTTPException
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+from fastapi import FastAPI, Request, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, RedirectResponse, HTMLResponse
