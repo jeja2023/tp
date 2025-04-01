@@ -74,7 +74,7 @@ function initMap() {
             window.map = new window.AMap.Map(mapContainer, {
                 viewMode: '2D',  // 使用2D视图
                 zoom: 11,  // 设置默认缩放级别为11
-                center: [116.397428, 39.90923],
+                center: [120.301663, 31.574729],  // 无锡市中心坐标
                 resizeEnable: true,
                 isHotspot: false,  // 禁用热点和标注
                 defaultCursor: 'default',  // 设置默认光标样式
@@ -813,7 +813,7 @@ async function plotImagesOnMap() {
                 
                 // 创建标记点和连线
                 points.forEach((point, index) => {
-                    // 创建标记，使用数字图标
+                    // 创建标记，使用自定义HTML内容的数字图标
                     const marker = new AMap.Marker({
                         position: point,
                         map: map,

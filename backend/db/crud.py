@@ -211,13 +211,17 @@ def create_image(db: Session, image: ImageCreate, file_path: str):
     db.refresh(db_image)
     
     # 创建涉事人员记录
-    if image.people_involved:
+    if image.people_involved and len(image.people_involved) > 0:
         for person in image.people_involved:
-            db_person = PersonInvolved(
-                **person.dict(),
-                image_id=db_image.id
-            )
-            db.add(db_person)
+            # 检查人员信息是否有效
+            if person.name or person.id_number or person.household_registration:
+                db_person = PersonInvolved(
+                    image_id=db_image.id,
+                    name=person.name or "",
+                    id_number=person.id_number or "",
+                    household_registration=person.household_registration or ""
+                )
+                db.add(db_person)
         
         db.commit()
     
@@ -255,12 +259,17 @@ def update_image(db: Session, image_id: int, image_data: ImageCreate):
     db.query(PersonInvolved).filter(PersonInvolved.image_id == image_id).delete()
     
     # 创建新的涉事人员记录
-    for person in image_data.people_involved:
-        db_person = PersonInvolved(
-            **person.dict(),
-            image_id=image_id
-        )
-        db.add(db_person)
+    if image_data.people_involved and len(image_data.people_involved) > 0:
+        for person in image_data.people_involved:
+            # 检查人员信息是否有效（至少一个字段有值）
+            if person.name or person.id_number or person.household_registration:
+                db_person = PersonInvolved(
+                    image_id=image_id,
+                    name=person.name or "",
+                    id_number=person.id_number or "",
+                    household_registration=person.household_registration or ""
+                )
+                db.add(db_person)
     
     db.commit()
     db.refresh(db_image)

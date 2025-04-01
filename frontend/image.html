@@ -188,7 +188,7 @@
             background: white;
             box-shadow: 0 1px 2px rgba(0,0,0,0.1);
             margin: 0;
-            height: 300px;
+            height: 320px;
             min-width: 280px;
             position: relative;
         }
@@ -250,7 +250,7 @@
         .image-info {
             padding: 8px;
             background: #fff;
-            height: 120px;
+            height: 140px;
             display: flex;
             flex-direction: column;
             gap: 3px;
@@ -982,6 +982,20 @@
                     // 构建图片URL
                     const imageUrl = getImageUrl(image.file_path);
                     
+                    // 获取涉事人员信息
+                    let peopleInfo = '无';
+                    if (image.people_involved && image.people_involved.length > 0) {
+                        // 只显示姓名，最多显示3个名字
+                        const names = image.people_involved.map(p => p.name).filter(Boolean);
+                        if (names.length > 0) {
+                            if (names.length > 3) {
+                                peopleInfo = `${names.slice(0, 3).join(', ')} 等${names.length}人`;
+                            } else {
+                                peopleInfo = names.join(', ');
+                            }
+                        }
+                    }
+                    
                     imageCard.innerHTML = `
                         <div class="image-container">
                             <img src="${imageUrl}" alt="${image.description || '图片'}">
@@ -1001,6 +1015,7 @@
                             <p><i class="fas fa-clock"></i> ${new Date(image.time).toLocaleString()}</p>
                             <p><i class="fas fa-map-marker-alt"></i> ${image.location || '未知地点'}</p>
                             <p><i class="fas fa-car"></i> ${image.transportation || '未知交通方式'}</p>
+                            <p><i class="fas fa-users"></i> ${peopleInfo}</p>
                             <p><i class="fas fa-user"></i> ${image.created_by || '未知用户'}</p>
                             <p><i class="fas fa-upload"></i> ${new Date(image.created_at).toLocaleString()}</p>
                         </div>
@@ -1253,14 +1268,12 @@
             try {
                 // 在地图上添加标记点
                 validPoints.forEach((point, index) => {
-                    // 创建标记
+                    // 创建带有自定义HTML内容的标记，而不是使用默认图标
                     const marker = new window.AMap.Marker({
                         position: point.position,
                         title: point.title,
-                        label: {
-                            content: `${index + 1}`,
-                            direction: 'top'
-                        }
+                        content: `<div style="width: 32px; height: 32px; background-color: #3388ff; color: white; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-weight: bold; font-size: 16px; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">${index + 1}</div>`,
+                        offset: new window.AMap.Pixel(-16, -16) // 调整偏移以使标记位于正确位置
                     });
                     
                     // 创建信息窗口内容，调整图片尺寸
@@ -1881,6 +1894,47 @@
                         console.log(`服务器文件删除成功: ${filename}`);
                         window.showMessage(`${type === 'excel' ? '轨迹表' : '轨迹报告'}已删除`, 'success');
                         
+                        // 从本地存储中也删除文件信息
+                        const filesKey = `task_${taskId}_files`;
+                        let localFiles = [];
+                        try {
+                            const filesJson = localStorage.getItem(filesKey);
+                            localFiles = filesJson ? JSON.parse(filesJson) : [];
+                            
+                            // 移除被删除的文件
+                            const updatedFiles = localFiles.filter(file => 
+                                file.filename !== filename && file.name !== filename
+                            );
+                            
+                            // 更新本地存储
+                            localStorage.setItem(filesKey, JSON.stringify(updatedFiles));
+                            
+                            // 更新UI显示
+                            const filesList = document.getElementById('generated-files-list');
+                            const filesContainer = document.getElementById('generated-files-container');
+                            
+                            if (filesList) {
+                                // 找到并移除对应的列表项
+                                const items = filesList.querySelectorAll('li');
+                                items.forEach(item => {
+                                    const deleteBtn = item.querySelector('.delete-file-btn');
+                                    if (deleteBtn && deleteBtn.getAttribute('data-filename') === filename) {
+                                        filesList.removeChild(item);
+                                    }
+                                });
+                                
+                                // 如果没有文件了，隐藏文件容器或显示无文件提示
+                                if (filesList.children.length === 0) {
+                                    if (filesContainer) {
+                                        // 隐藏文件容器而不是显示提示信息
+                                        filesContainer.style.display = 'none';
+                                    }
+                                }
+                            }
+                        } catch (error) {
+                            console.error('更新本地存储失败:', error);
+                        }
+                        
                         // 从服务器重新获取文件列表
                         fetchGeneratedFiles(taskId);
                     } else {
@@ -1931,8 +1985,28 @@
                 document.getElementById('detailLocation').textContent = image.location || '未知地点';
                 document.getElementById('detailTransportation').textContent = image.transportation || '未知交通方式';
                 document.getElementById('detailDescription').textContent = image.description || '无';
-                document.getElementById('detailPerson').textContent = image.person_name ? 
-                    `${image.person_name} (${image.person_id || '无身份证'})` : '无';
+                
+                // 处理涉事人员信息显示
+                let peopleInfo = '无';
+                if (image.people_involved && image.people_involved.length > 0) {
+                    // 提取所有涉事人员的姓名和身份证号
+                    const peopleDetails = image.people_involved.map(person => {
+                        if (person.name && person.id_number) {
+                            return `${person.name} (${person.id_number})`;
+                        } else if (person.name) {
+                            return person.name;
+                        } else if (person.id_number) {
+                            return `未知姓名 (${person.id_number})`;
+                        }
+                        return null;
+                    }).filter(Boolean);
+                    
+                    if (peopleDetails.length > 0) {
+                        peopleInfo = peopleDetails.join(', ');
+                    }
+                }
+                document.getElementById('detailPerson').textContent = peopleInfo;
+                
                 document.getElementById('detailGPS').textContent = image.gps_latitude && image.gps_longitude ? 
                     `${image.gps_latitude}, ${image.gps_longitude}` : '无';
                 document.getElementById('detailUploader').textContent = image.created_by || '未知用户';

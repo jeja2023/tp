@@ -9,11 +9,100 @@
     <link rel="stylesheet" href="/static/css/all.min.css">
     <!-- XLSX库 -->
     <script src="/static/js/xlsx.full.min.js"></script>
+
+    <!-- 添加高德地图API -->
+    <script src="/static/js/amap/AMap3.js"></script>
+    <script src="/static/js/amap/mapsplugin.js"></script>
+
     <script>
         // 从URL获取任务ID
         const urlParams = new URLSearchParams(window.location.search);
         const taskId = urlParams.get('id');
+        
+        // 配置离线高德地图
+        document.addEventListener('DOMContentLoaded', function() {
+            // 设置全局配置
+            if (window.AMap) {
+                window.AMap.Config = {
+                    offline: true,
+                    version: '2.0.1',
+                    baseUrl: '/frontend/static/js/MAP_zxy/',
+                    maxZoom: 12,
+                    disableOnline: true
+                };
+                
+                // 重写AMap.plugin方法，阻止在线加载
+                window.AMap.plugin = function(plugins, callback) {
+                    if (callback) callback();
+                };
+                
+                // 重写AMap.load方法，阻止在线加载
+                window.AMap.load = function(plugins, callback) {
+                    if (callback) callback();
+                };
+                
+                // 重写资源加载方法，使用本地2.0.1文件
+                window.AMap.Wn = {
+                    fn: function() {
+                        return Promise.resolve('/static/js/amap/2.0.1');
+                    }
+                };
+                
+                // 重写AMap.TileLayer.prototype.getTileUrl方法
+                if (window.AMap.TileLayer) {
+                    window.AMap.TileLayer.prototype.getTileUrl = function(x, y, z) {
+                        if (z > 12) z = 12;
+                        return `/frontend/static/js/MAP_zxy/${z}/${x}/${y}.png`;
+                    };
+                }
+
+                // 重写AMap.Map构造函数
+                const originalMap = window.AMap.Map;
+                window.AMap.Map = function(container, options) {
+                    options = options || {};
+                    options.layers = [];
+                    options.features = ['bg', 'building'];
+                    options.showRoad = false;
+                    options.showTraffic = false;
+                    options.showPOI = false;
+                    options.showBuilding = false;
+                    options.showIndoorMap = false;
+                    options.showLabel = false;
+                    options.offline = true;
+                    options.zooms = [1, 12];
+                    options.version = '2.0.1';
+                    options.pluginDir = '/frontend/static/js/amap/mapsplugins/';
+                    options.mapStyle = 'normal';
+                    options.defaultLayer = false;
+                    options.mapDir = '/frontend/static/js/amap/';
+                    return new originalMap(container, options);
+                };
+
+                // 重写AMap.TileLayer构造函数
+                const originalTileLayer = window.AMap.TileLayer;
+                window.AMap.TileLayer = function(options) {
+                    options = options || {};
+                    options.getTileUrl = function(x, y, z) {
+                        if (z > 12) z = 12;
+                        return `/frontend/static/js/MAP_zxy/${z}/${x}/${y}.png`;
+                    };
+                    options.offline = true;
+                    options.zooms = [1, 12];
+                    options.version = '2.0.1';
+                    options.mapStyle = 'normal';
+                    options.mapDir = '/frontend/static/js/amap/';
+                    return new originalTileLayer(options);
+                };
+                
+                console.log('离线高德地图API配置完成');
+                
+                // 触发高德地图加载完成事件
+                const amapLoadedEvent = new CustomEvent('amap-loaded');
+                window.dispatchEvent(amapLoadedEvent);
+            }
+        });
     </script>
+
     <!-- 移除地图相关脚本 -->
     <script src="/static/js/utils.js"></script>
     <style>
@@ -260,14 +349,20 @@
             padding: 8px;
             box-shadow: 0 1px 3px rgba(0,0,0,0.1);
             box-sizing: border-box;
+            min-height: 320px; /* 增加最小高度，确保内容显示完整 */
+        }
+        
+        .images-column .image-info {
+            margin-top: 10px;
+            flex: 1;
+            min-height: 160px; /* 增加最小高度，确保显示所有内容 */
         }
         
         .images-column .image-card img {
             width: 100%;
-            height: 150px; /* 固定高度 */
-            object-fit: cover; /* 图片填充方式 */
-            display: block;
-            margin: 0 auto 5px;
+            height: auto;
+            max-height: 160px; /* 限制图片最大高度 */
+            object-fit: contain;
             border-radius: 4px;
         }
         
@@ -1092,6 +1187,20 @@
                 // 处理图片路径
                 const imagePath = image.file_path.startsWith('/') ? image.file_path : `/${image.file_path}`;
                 
+                // 获取涉事人员信息
+                let peopleInfo = '无';
+                if (image.people_involved && image.people_involved.length > 0) {
+                    // 只显示姓名，最多显示3个名字
+                    const names = image.people_involved.map(p => p.name).filter(Boolean);
+                    if (names.length > 0) {
+                        if (names.length > 3) {
+                            peopleInfo = `${names.slice(0, 3).join(', ')} 等${names.length}人`;
+                        } else {
+                            peopleInfo = names.join(', ');
+                        }
+                    }
+                }
+                
                 // 根据权限决定按钮显示
                 const editDeleteButtons = canEdit ? `
                     <button class="btn small-btn edit-btn" data-id="${image.id}">编辑</button>
@@ -1103,6 +1212,7 @@
                     <div class="image-info">
                         <h4>序号: ${index + 1}</h4>
                         <p>时间: ${formattedTime} | 地点: ${image.location}</p>
+                        <p>涉事人员: ${peopleInfo}</p>
                         <p class="creator-info" style="font-size: 11px; color: #666; margin: 2px 0;">创建: ${createdBy} (${createdAt})</p>
                         <div class="image-actions">
                             <button class="btn small-btn view-detail-btn" data-id="${image.id}">详情</button>

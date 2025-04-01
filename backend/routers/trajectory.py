@@ -179,6 +179,9 @@ async def generate_trajectory_report(case_id: str, db: Session = Depends(get_db)
         else:
             doc.add_paragraph('无涉事人员信息')
         
+        # 获取任务输出目录
+        task_dir = get_task_output_dir(case_id)
+        
         # 添加轨迹信息
         doc.add_heading('轨迹信息', level=1)
         for img_info in case_info['images_info']:
@@ -198,44 +201,75 @@ async def generate_trajectory_report(case_id: str, db: Session = Depends(get_db)
                 persons_str = ', '.join([f"{p['name']}({p['id_number']})" for p in img_info['persons']])
                 p.add_run(f"{persons_str}\n")
             
-            # 添加图片 - 直接使用原始路径
+            # 添加图片 - 直接使用原始图片路径
             if img_info['image_path']:
                 try:
+                    logger.info(f"图片路径调试: 原始路径={img_info['image_path']}")
+                    
                     # 构建完整的原始图片路径
                     original_image_path = img_info['image_path']
-                    if not original_image_path.startswith('/'):
-                        original_image_path = '/' + original_image_path
                     
-                    # 尝试查找原始图片
-                    # 1. 尝试当前路径 (带有task_id)
-                    full_path = os.path.join('uploads', original_image_path.lstrip('/'))
+                    # 尝试多种路径组合
+                    possible_paths = []
                     
-                    # 2. 尝试不带task_id的路径
-                    if not os.path.exists(full_path):
-                        basename = os.path.basename(original_image_path)
-                        full_path = os.path.join('uploads', basename)
+                    # 1. 直接使用原始路径
+                    possible_paths.append(original_image_path)
                     
-                    # 3. 尝试用图片名直接在uploads目录下查找
-                    if not os.path.exists(full_path):
-                        basename = os.path.basename(original_image_path)
-                        # 在uploads子目录中查找
+                    # 2. 尝试标准的uploads路径
+                    if original_image_path.startswith('task_'):
+                        possible_paths.append(os.path.join('uploads', original_image_path))
+                    else:
+                        possible_paths.append(os.path.join('uploads', original_image_path.lstrip('/')))
+                    
+                    # 3. 尝试不同路径组合
+                    basename = os.path.basename(original_image_path)
+                    possible_paths.append(os.path.join('uploads', basename))
+                    
+                    # 4. 从任务ID构建路径
+                    task_dir_path = f"uploads/task_{case_id}"
+                    possible_paths.append(os.path.join(task_dir_path, basename))
+                    
+                    # 记录所有可能的路径
+                    logger.info(f"尝试的所有可能路径: {possible_paths}")
+                    
+                    # 尝试所有可能的路径
+                    success = False
+                    for path in possible_paths:
+                        if os.path.exists(path):
+                            try:
+                                doc.add_picture(path, width=Inches(6))
+                                logger.info(f"成功添加图片: {path}")
+                                success = True
+                                break
+                            except Exception as e:
+                                logger.warning(f"尝试路径 {path} 失败: {str(e)}")
+                                continue
+                    
+                    # 如果所有路径都失败，尝试在uploads目录下递归查找
+                    if not success:
                         for root, dirs, files in os.walk('uploads'):
                             for file in files:
                                 if file == basename:
-                                    full_path = os.path.join(root, file)
-                                    break
-                            if os.path.exists(full_path):
+                                    try:
+                                        full_path = os.path.join(root, file)
+                                        doc.add_picture(full_path, width=Inches(6))
+                                        logger.info(f"通过遍历找到并添加图片: {full_path}")
+                                        success = True
+                                        break
+                                    except Exception as e:
+                                        logger.warning(f"尝试遍历找到的路径 {full_path} 失败: {str(e)}")
+                                        continue
+                            if success:
                                 break
                     
-                    if os.path.exists(full_path):
-                        # 直接将原始图片添加到文档
-                        doc.add_picture(full_path, width=Inches(6))
-                    else:
-                        logger.warning(f"找不到图片: {original_image_path}")
+                    # 如果所有尝试都失败
+                    if not success:
+                        logger.warning(f"所有尝试路径均失败，找不到图片: {original_image_path}")
                         p.add_run("\n[图片未找到]\n")
+                    
                 except Exception as e:
                     logger.error(f"添加图片失败: {str(e)}", exc_info=not IS_PRODUCTION)
-                    p.add_run("\n[图片添加失败]\n")
+                    p.add_run("\n[图片添加失败: " + str(e) + "]\n")
             
             # 添加分隔线
             doc.add_paragraph('_' * 40)
@@ -247,8 +281,6 @@ async def generate_trajectory_report(case_id: str, db: Session = Depends(get_db)
         current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = f"关于{case_info['subject']}的轨迹报告_{current_time}.docx"
         
-        # 获取任务输出目录
-        task_dir = get_task_output_dir(case_id)
         filepath = os.path.join(task_dir, filename)
         doc.save(filepath)
         
