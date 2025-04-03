@@ -10,7 +10,10 @@ from backend.db.database import get_db, IS_PRODUCTION
 from backend.models.models import Task, Image, PersonInvolved
 import pandas as pd
 from docx import Document
-from docx.shared import Inches
+from docx.shared import Inches, Pt, RGBColor
+from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.oxml.ns import qn
+from docx.oxml import OxmlElement
 import os
 from datetime import datetime
 import json
@@ -92,6 +95,24 @@ def get_case_info(case_id: str, db: Session):
         logger.error(f"获取案件信息失败: {str(e)}", exc_info=not IS_PRODUCTION)
         raise HTTPException(status_code=500, detail="获取案件信息失败")
 
+def set_cell_font(cell, font_name, font_size, is_bold=False):
+    """设置单元格字体"""
+    run = cell.paragraphs[0].runs[0] if cell.paragraphs[0].runs else cell.paragraphs[0].add_run()
+    run.font.name = font_name
+    run._element.rPr.rFonts.set(qn('w:eastAsia'), font_name)
+    run.font.size = Pt(font_size)
+    run.font.bold = is_bold
+    run.font.color.rgb = RGBColor(0, 0, 0)  # 黑色
+
+def set_paragraph_font(paragraph, font_name, font_size, is_bold=False):
+    """设置段落字体"""
+    for run in paragraph.runs:
+        run.font.name = font_name
+        run._element.rPr.rFonts.set(qn('w:eastAsia'), font_name)
+        run.font.size = Pt(font_size)
+        run.font.bold = is_bold
+        run.font.color.rgb = RGBColor(0, 0, 0)  # 黑色
+
 @router.get("/excel/{case_id}")
 async def generate_trajectory_excel(case_id: str, db: Session = Depends(get_db)):
     """生成指定案件的轨迹表Excel文件"""
@@ -164,44 +185,92 @@ async def generate_trajectory_report(case_id: str, db: Session = Depends(get_db)
         # 创建Word文档
         doc = Document()
         
+        # 设置默认字体
+        doc.styles['Normal'].font.name = '方正仿宋GBK'
+        doc.styles['Normal']._element.rPr.rFonts.set(qn('w:eastAsia'), '方正仿宋GBK')
+        doc.styles['Normal'].font.size = Pt(16)  # 三号字体
+        doc.styles['Normal'].font.color.rgb = RGBColor(0, 0, 0)  # 黑色
+        
         # 添加标题
-        doc.add_heading(f"关于{case_info['subject']}的轨迹报告", 0)
+        title = doc.add_heading(f"关于{case_info['subject']}的轨迹报告", 0)
+        title.alignment = WD_ALIGN_PARAGRAPH.CENTER  # 居中
+        for run in title.runs:
+            run.font.name = '方正小标宋GBK'
+            run._element.rPr.rFonts.set(qn('w:eastAsia'), '方正小标宋GBK')
+            run.font.size = Pt(22)  # 二号字体
+            run.font.color.rgb = RGBColor(0, 0, 0)  # 黑色
         
         # 添加涉事人员信息
-        doc.add_heading('涉事人员信息', level=1)
+        heading1 = doc.add_heading('涉事人员信息', level=1)
+        heading1.alignment = WD_ALIGN_PARAGRAPH.CENTER  # 居中
+        for run in heading1.runs:
+            run.font.name = '方正黑体GBK'
+            run._element.rPr.rFonts.set(qn('w:eastAsia'), '方正黑体GBK')
+            run.font.size = Pt(16)  # 三号字体
+            run.font.color.rgb = RGBColor(0, 0, 0)  # 黑色
+            
         if case_info['involved_persons']:
+            # 使用去重后的涉事人员列表
+            unique_persons = {}
             for person in case_info['involved_persons']:
-                doc.add_paragraph(
-                    f"姓名：{person['name']}\n"
-                    f"身份证号：{person['id_number']}\n"
-                    f"户籍地：{person['hometown']}\n"
-                )
+                # 使用身份证号作为唯一标识
+                key = person['id_number']
+                if key not in unique_persons:
+                    unique_persons[key] = person
+            
+            # 添加去重后的涉事人员信息
+            for person in unique_persons.values():
+                p = doc.add_paragraph()
+                p.add_run(f"姓名：{person['name']}\n")
+                p.add_run(f"身份证号：{person['id_number']}\n")
+                p.add_run(f"户籍地：{person['hometown']}\n")
+                set_paragraph_font(p, '方正仿宋GBK', 16)  # 三号字体
         else:
-            doc.add_paragraph('无涉事人员信息')
+            p = doc.add_paragraph('无涉事人员信息')
+            set_paragraph_font(p, '方正仿宋GBK', 16)  # 三号字体
         
         # 获取任务输出目录
         task_dir = get_task_output_dir(case_id)
         
         # 添加轨迹信息
-        doc.add_heading('轨迹信息', level=1)
-        for img_info in case_info['images_info']:
-            # 添加时间和地点作为小标题
-            doc.add_heading(f"{img_info['time']} - {img_info['location']}", level=2)
+        heading2 = doc.add_heading('轨迹信息', level=1)
+        heading2.alignment = WD_ALIGN_PARAGRAPH.CENTER  # 居中
+        for run in heading2.runs:
+            run.font.name = '方正黑体GBK'
+            run._element.rPr.rFonts.set(qn('w:eastAsia'), '方正黑体GBK')
+            run.font.size = Pt(16)  # 三号字体
+            run.font.color.rgb = RGBColor(0, 0, 0)  # 黑色
+            
+        for i, img_info in enumerate(case_info['images_info'], 1):
+            # 添加时间和地点作为小标题，带序号
+            sub_heading = doc.add_heading(f"{i}. {img_info['time']} - {img_info['location']}", level=2)
+            for run in sub_heading.runs:
+                run.font.name = '方正黑体GBK'
+                run._element.rPr.rFonts.set(qn('w:eastAsia'), '方正黑体GBK')
+                run.font.size = Pt(16)  # 三号字体
+                run.font.color.rgb = RGBColor(0, 0, 0)  # 黑色
             
             # 添加详细信息
             p = doc.add_paragraph()
-            p.add_run('交通方式：').bold = True
-            p.add_run(f"{img_info['transportation']}\n")
-            p.add_run('事件描述：').bold = True
-            p.add_run(f"{img_info['description']}\n")
+            if img_info['transportation']:
+                p.add_run('交通方式：')
+                p.add_run(f"{img_info['transportation']}\n")
+            if img_info['description']:
+                p.add_run('事件描述：')
+                p.add_run(f"{img_info['description']}\n")
+            set_paragraph_font(p, '方正仿宋GBK', 16)  # 三号字体
             
             # 添加涉事人员信息
             if img_info['persons']:
-                p.add_run('涉事人员：').bold = True
+                p = doc.add_paragraph()
+                p.paragraph_format.space_before = Pt(0)  # 设置段落前间距为0
+                p.paragraph_format.space_after = Pt(0)   # 设置段落后间距为0
+                p.add_run('涉事人员：')
                 persons_str = ', '.join([f"{p['name']}({p['id_number']})" for p in img_info['persons']])
                 p.add_run(f"{persons_str}\n")
+                set_paragraph_font(p, '方正仿宋GBK', 16)  # 三号字体
             
-            # 添加图片 - 直接使用原始图片路径
+            # 添加图片
             if img_info['image_path']:
                 try:
                     logger.info(f"图片路径调试: 原始路径={img_info['image_path']}")
@@ -265,17 +334,25 @@ async def generate_trajectory_report(case_id: str, db: Session = Depends(get_db)
                     # 如果所有尝试都失败
                     if not success:
                         logger.warning(f"所有尝试路径均失败，找不到图片: {original_image_path}")
+                        p = doc.add_paragraph()
+                        p.paragraph_format.space_before = Pt(0)  # 设置段落前间距为0
+                        p.paragraph_format.space_after = Pt(0)   # 设置段落后间距为0
                         p.add_run("\n[图片未找到]\n")
+                        set_paragraph_font(p, '方正仿宋GBK', 16)  # 三号字体
                     
                 except Exception as e:
                     logger.error(f"添加图片失败: {str(e)}", exc_info=not IS_PRODUCTION)
+                    p = doc.add_paragraph()
+                    p.paragraph_format.space_before = Pt(0)  # 设置段落前间距为0
+                    p.paragraph_format.space_after = Pt(0)   # 设置段落后间距为0
                     p.add_run("\n[图片添加失败: " + str(e) + "]\n")
-            
-            # 添加分隔线
-            doc.add_paragraph('_' * 40)
+                    set_paragraph_font(p, '方正仿宋GBK', 16)  # 三号字体
         
         # 添加落款
-        doc.add_paragraph(f"\n\n{datetime.now().strftime('%Y年%m月%d日')}")
+        footer_paragraph = doc.add_paragraph()
+        footer_paragraph.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+        footer_run = footer_paragraph.add_run(f"{datetime.now().strftime('%Y年%m月%d日')}")
+        set_paragraph_font(footer_paragraph, '方正仿宋GBK', 16)  # 三号字体
         
         # 生成文件名和保存文件
         current_time = datetime.now().strftime("%Y%m%d_%H%M%S")

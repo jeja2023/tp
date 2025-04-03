@@ -1707,8 +1707,7 @@
             const li = document.createElement('li');
             li.innerHTML = `
                 <span>${filename}</span>
-                <div class="file-actions" style="display: flex; gap: 5px;">
-                    <a href="${previewUrl}" target="_blank" class="btn small-btn">查看</a>
+                <div class="file-actions">
                     <a href="${downloadUrl}" download="${filename}" class="btn small-btn" style="background-color: #28a745;">下载</a>
                     <button class="btn small-btn delete-file-btn" style="background-color: #dc3545;" data-filename="${filename}" data-type="${type}">删除</button>
                 </div>
@@ -1774,7 +1773,6 @@
                             li.innerHTML = `
                                 <span>${filename}</span>
                                 <div class="file-actions">
-                                    <a href="${previewUrl}" target="_blank" class="btn small-btn">查看</a>
                                     <a href="${downloadUrl}" download="${filename}" class="btn small-btn" style="background-color: #28a745;">下载</a>
                                     <button class="btn small-btn delete-file-btn" style="background-color: #dc3545;" data-filename="${filename}" data-type="${type}">删除</button>
                                 </div>
@@ -1930,9 +1928,6 @@
                                 ${typeText} · ${formattedDate}
                             </small>
                             <div class="file-actions">
-                                <a href="${previewUrl}" target="_blank" class="btn small-btn" title="查看文件">
-                                    <i class="fas fa-eye"></i> 查看
-                                </a>
                                 <a href="${downloadUrl}" download="${displayName}" class="btn small-btn" style="background-color: #28a745;" title="下载文件">
                                     <i class="fas fa-download"></i> 下载
                                 </a>
