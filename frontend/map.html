@@ -180,13 +180,31 @@
             }
 
             try {
-                // 设置全局配置
+                // 配置离线地图
                 window.AMap.Config = {
                     offline: true,
                     version: '2.0.1',
-                    baseUrl: '/frontend/static/js/MAP_zxy/',
-                    maxZoom: 12,
-                    disableOnline: true
+                    path: '/static/js/amap/',  // 指向本地AMap文件目录
+                    baseUrl: '/static/js/MAP_zxy/',
+                    maxZoom: 12,  // 最大缩放级别为12
+                    disableOnline: true,
+                    disableApi: true,  // 禁用API加载
+                    disableUI: true,   // 禁用UI组件加载
+                    disablePlugin: true, // 禁用插件加载
+                    disableMapUI: true,  // 禁用地图UI
+                    disableMapControl: true, // 禁用地图控件
+                    disableMapToolbar: true, // 禁用地图工具栏
+                    disableMapStatus: true,  // 禁用地图状态栏
+                    disableMapLogo: true,    // 禁用地图Logo
+                    disableMapScale: true,   // 禁用地图比例尺
+                    disableMapZoom: true,    // 禁用地图缩放控件
+                    disableMapPan: true,     // 禁用地图平移控件
+                    disableMapRotate: true,  // 禁用地图旋转控件
+                    disableMapPitch: true,   // 禁用地图倾斜控件
+                    disableMapCompass: true, // 禁用地图指南针
+                    disableMapOverview: true,  // 禁用地图鹰眼
+                    imageamap: '/static/js/amap/',  // 添加imageamap路径配置
+                    mapamap: '/static/js/amap/'     // 添加mapamap路径配置
                 };
                 
                 // 重写AMap.plugin方法，阻止在线加载
@@ -229,10 +247,9 @@
                     options.offline = true;
                     options.zooms = [1, 12];
                     options.version = '2.0.1';
-                    options.pluginDir = '/frontend/static/js/amap/mapsplugins/';
-                    options.mapStyle = 'normal';
+                    options.pluginDir = '/static/js/amap/mapsplugins/';
                     options.defaultLayer = false;
-                    options.mapDir = '/frontend/static/js/amap/';
+                    options.mapDir = '/static/js/amap/';
                     return new originalMap(container, options);
                 };
 
@@ -247,8 +264,7 @@
                     options.offline = true;
                     options.zooms = [1, 12];
                     options.version = '2.0.1';
-                    options.mapStyle = 'normal';
-                    options.mapDir = '/frontend/static/js/amap/';
+                    options.mapDir = '/static/js/amap/';
                     return new originalTileLayer(options);
                 };
                 

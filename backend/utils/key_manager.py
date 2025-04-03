@@ -5,16 +5,22 @@ import logging
 import shutil
 from datetime import datetime, timedelta
 from typing import Optional, Tuple
+from pathlib import Path
 
 # 配置日志
 logger = logging.getLogger(__name__)
 
 class KeyManager:
-    def __init__(self, key_file: str = ".env", rotation_interval_days: int = 30, backup_dir: str = "keybackups"):
-        self.key_file = key_file
+    def __init__(self, key_file: str = None, rotation_interval_days: int = 30, backup_dir: str = None):
+        # 获取项目根目录
+        current_dir = Path(__file__).parent
+        root_dir = current_dir.parent.parent
+        
+        # 设置文件路径
+        self.key_file = key_file or os.path.join(root_dir, ".env")
         self.rotation_interval_days = rotation_interval_days
-        self.last_rotation_file = "last_key_rotation.txt"
-        self.backup_dir = backup_dir
+        self.last_rotation_file = os.path.join(root_dir, "backend", "last_key_rotation.txt")
+        self.backup_dir = backup_dir or os.path.join(root_dir, "backend", "keybackups")
         
         # 确保备份目录存在
         if not os.path.exists(self.backup_dir):
@@ -23,6 +29,16 @@ class KeyManager:
                 logger.info(f"创建密钥备份目录: {self.backup_dir}")
             except Exception as e:
                 logger.warning(f"无法创建密钥备份目录: {e}")
+        
+        # 检查环境文件是否存在，如果不存在则从示例文件创建
+        if not os.path.exists(self.key_file):
+            example_env = os.path.join(root_dir, ".env.example")
+            if os.path.exists(example_env):
+                try:
+                    shutil.copy2(example_env, self.key_file)
+                    logger.info("已从示例文件创建环境文件")
+                except Exception as e:
+                    logger.warning(f"无法从示例文件创建环境文件: {e}")
         
     def generate_secret_key(self) -> str:
         """生成新的安全密钥"""

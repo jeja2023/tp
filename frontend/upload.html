@@ -10,100 +10,12 @@
     <!-- XLSX库 -->
     <script src="/static/js/xlsx.full.min.js"></script>
 
-    <!-- 添加高德地图API -->
-    <script src="/static/js/amap/AMap3.js"></script>
-    <script src="/static/js/amap/mapsplugin.js"></script>
-
     <script>
         // 从URL获取任务ID
         const urlParams = new URLSearchParams(window.location.search);
         const taskId = urlParams.get('id');
-        
-        // 配置离线高德地图
-        document.addEventListener('DOMContentLoaded', function() {
-            // 设置全局配置
-            if (window.AMap) {
-                window.AMap.Config = {
-                    offline: true,
-                    version: '2.0.1',
-                    baseUrl: '/frontend/static/js/MAP_zxy/',
-                    maxZoom: 12,
-                    disableOnline: true
-                };
-                
-                // 重写AMap.plugin方法，阻止在线加载
-                window.AMap.plugin = function(plugins, callback) {
-                    if (callback) callback();
-                };
-                
-                // 重写AMap.load方法，阻止在线加载
-                window.AMap.load = function(plugins, callback) {
-                    if (callback) callback();
-                };
-                
-                // 重写资源加载方法，使用本地2.0.1文件
-                window.AMap.Wn = {
-                    fn: function() {
-                        return Promise.resolve('/static/js/amap/2.0.1');
-                    }
-                };
-                
-                // 重写AMap.TileLayer.prototype.getTileUrl方法
-                if (window.AMap.TileLayer) {
-                    window.AMap.TileLayer.prototype.getTileUrl = function(x, y, z) {
-                        if (z > 12) z = 12;
-                        return `/frontend/static/js/MAP_zxy/${z}/${x}/${y}.png`;
-                    };
-                }
-
-                // 重写AMap.Map构造函数
-                const originalMap = window.AMap.Map;
-                window.AMap.Map = function(container, options) {
-                    options = options || {};
-                    options.layers = [];
-                    options.features = ['bg', 'building'];
-                    options.showRoad = false;
-                    options.showTraffic = false;
-                    options.showPOI = false;
-                    options.showBuilding = false;
-                    options.showIndoorMap = false;
-                    options.showLabel = false;
-                    options.offline = true;
-                    options.zooms = [1, 12];
-                    options.version = '2.0.1';
-                    options.pluginDir = '/frontend/static/js/amap/mapsplugins/';
-                    options.mapStyle = 'normal';
-                    options.defaultLayer = false;
-                    options.mapDir = '/frontend/static/js/amap/';
-                    return new originalMap(container, options);
-                };
-
-                // 重写AMap.TileLayer构造函数
-                const originalTileLayer = window.AMap.TileLayer;
-                window.AMap.TileLayer = function(options) {
-                    options = options || {};
-                    options.getTileUrl = function(x, y, z) {
-                        if (z > 12) z = 12;
-                        return `/frontend/static/js/MAP_zxy/${z}/${x}/${y}.png`;
-                    };
-                    options.offline = true;
-                    options.zooms = [1, 12];
-                    options.version = '2.0.1';
-                    options.mapStyle = 'normal';
-                    options.mapDir = '/frontend/static/js/amap/';
-                    return new originalTileLayer(options);
-                };
-                
-                console.log('离线高德地图API配置完成');
-                
-                // 触发高德地图加载完成事件
-                const amapLoadedEvent = new CustomEvent('amap-loaded');
-                window.dispatchEvent(amapLoadedEvent);
-            }
-        });
     </script>
 
-    <!-- 移除地图相关脚本 -->
     <script src="/static/js/utils.js"></script>
     <style>
     </style>
@@ -598,6 +510,37 @@
         input[type="file"] {
             display: none;
         }
+        
+        /* 人员列表样式 */
+        .people-list {
+            margin-top: 8px;
+            margin-left: 10px;
+            border-left: 2px solid #3498db;
+            padding-left: 10px;
+        }
+        
+        .person-item {
+            background-color: rgba(52, 152, 219, 0.1);
+            border-radius: 4px;
+            padding: 8px;
+            margin-bottom: 5px;
+        }
+        
+        .person-item p {
+            margin: 3px 0;
+            font-size: 0.85em;
+        }
+        
+        /* 确保图片卡片可以容纳更多内容 */
+        .image-card {
+            max-height: none;
+            overflow: visible;
+        }
+        
+        .image-info {
+            max-height: none;
+            overflow-y: visible;
+        }
     </style>
 </head>
 <body>
@@ -681,8 +624,8 @@
                         <div class="form-group">
                             <label for="gps-coordinates">GPS坐标 (选填)</label>
                             <div class="gps-inputs" style="display: flex; gap: 10px;">
-                                <input type="text" id="gps-latitude" name="gps_latitude" placeholder="纬度" style="flex: 1;">
                                 <input type="text" id="gps-longitude" name="gps_longitude" placeholder="经度" style="flex: 1;">
+                                <input type="text" id="gps-latitude" name="gps_latitude" placeholder="纬度" style="flex: 1;">
                             </div>
                         </div>
                         
@@ -795,8 +738,8 @@
                             <div class="form-group">
                                 <label>GPS坐标</label>
                                 <div class="gps-inputs" style="display: flex; gap: 10px;">
-                                    <input type="text" id="edit-gps-latitude" placeholder="纬度" style="flex: 1;">
                                     <input type="text" id="edit-gps-longitude" placeholder="经度" style="flex: 1;">
+                                    <input type="text" id="edit-gps-latitude" placeholder="纬度" style="flex: 1;">
                                 </div>
                             </div>
                             
@@ -864,8 +807,8 @@
                         <div class="form-group">
                             <label>GPS坐标 (选填)</label>
                             <div class="gps-inputs" style="display: flex; gap: 10px;">
-                                <input type="text" id="pending-edit-latitude" placeholder="纬度" style="flex: 1;">
                                 <input type="text" id="pending-edit-longitude" placeholder="经度" style="flex: 1;">
+                                <input type="text" id="pending-edit-latitude" placeholder="纬度" style="flex: 1;">
                             </div>
                         </div>
                         
@@ -1077,7 +1020,15 @@
                 document.getElementById('current-task-title').textContent = task.title || task.name;
                 document.getElementById('current-task-description').textContent = task.description;
                 document.getElementById('task-creator').textContent = task.owner?.username || '未知用户';
-                document.getElementById('task-created-time').textContent = new Date(task.created_at).toLocaleString();
+                document.getElementById('task-created-time').textContent = new Date(task.created_at).toLocaleString('zh-CN', {
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit',
+                    hour12: false
+                });
                 document.title = `${task.title || task.name} - 图片管理系统`;
             } catch (error) {
                 console.error('获取任务详情失败:', error);
@@ -1348,8 +1299,8 @@
                 document.getElementById('detail-description').textContent = image.description || '无';
                 
                 // 设置GPS信息
-                const gpsText = image.gps_latitude && image.gps_longitude 
-                    ? `${image.gps_latitude}, ${image.gps_longitude}`
+                const gpsText = image.gps_longitude && image.gps_latitude
+                    ? `${image.gps_longitude}, ${image.gps_latitude}`
                     : '未设置';
                 document.getElementById('detail-gps').textContent = gpsText;
                 
@@ -2139,8 +2090,8 @@
                 document.getElementById('detail-transportation').textContent = updatedImage.transportation;
                 document.getElementById('detail-description').textContent = updatedImage.description || '无';
                 
-                const gpsText = updatedImage.gps_latitude && updatedImage.gps_longitude 
-                    ? `${updatedImage.gps_latitude}, ${updatedImage.gps_longitude}`
+                const gpsText = updatedImage.gps_longitude && updatedImage.gps_latitude
+                    ? `${updatedImage.gps_longitude}, ${updatedImage.gps_latitude}`
                     : '未设置';
                 document.getElementById('detail-gps').textContent = gpsText;
                 
@@ -2174,6 +2125,31 @@
         // 移除地图事件初始化函数
         function setupMapEvents() {
             // 移除地图相关事件
+        }
+
+        // 更新任务信息显示
+        function updateTaskInfo(task) {
+            const taskTitle = document.getElementById('task-title');
+            const taskDescription = document.getElementById('task-description');
+            const taskCreatedTime = document.getElementById('task-created-time');
+            
+            if (taskTitle) taskTitle.textContent = task.title;
+            if (taskDescription) taskDescription.textContent = task.description || '无描述';
+            
+            if (taskCreatedTime) {
+                const createdAt = new Date(task.created_at);
+                const formattedDate = createdAt.toLocaleString('zh-CN', {
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit',
+                    hour12: false,
+                    timeZone: 'Asia/Shanghai'
+                });
+                taskCreatedTime.textContent = formattedDate;
+            }
         }
     </script>
     
@@ -2311,23 +2287,47 @@
         // 修改文件选择处理函数
         function handleFileSelect(event) {
             const files = event.target.files;
+            console.log(`选择了 ${files.length} 个文件`);
+            
             if (files.length > 0) {
                 Array.from(files).forEach(file => {
                     if (file.type.startsWith('image/')) {
+                        console.log(`处理图片: ${file.name}, 大小: ${file.size} 字节`);
+                        
+                        // 获取表单数据
+                        const formData = {
+                            time: document.getElementById('time').value || new Date().toISOString(),
+                            location: document.getElementById('location').value || '',
+                            transportation: document.getElementById('transportation').value || '',
+                            description: document.getElementById('description').value || '',
+                            latitude: document.getElementById('gps-latitude').value,
+                            longitude: document.getElementById('gps-longitude').value,
+                            people: getPeopleData()
+                        };
+                        
+                        console.log('收集的表单数据:', formData);
+                        
                         const reader = new FileReader();
                         reader.onload = function(e) {
+                            console.log('图片已读取完成，准备添加到待提交列表');
+                            
                             const imageData = {
                                 file: file,
                                 preview: e.target.result,
-                                time: document.getElementById('time').value || new Date().toISOString(),
-                                location: document.getElementById('location').value || '',
-                                transportation: document.getElementById('transportation').value || '',
-                                description: document.getElementById('description').value || '',
-                                latitude: document.getElementById('gps-latitude').value || '',
-                                longitude: document.getElementById('gps-longitude').value || '',
-                                people: getPeopleData()
+                                ...formData
                             };
+                            
+                            console.log('创建的图片数据:', {
+                                fileName: imageData.file.name,
+                                time: imageData.time,
+                                location: imageData.location,
+                                gps: {lat: imageData.latitude, lng: imageData.longitude},
+                                peopleCount: imageData.people ? imageData.people.length : 0
+                            });
+                            
                             pendingImages.push(imageData);
+                            console.log(`待提交图片数量: ${pendingImages.length}`);
+                            
                             updatePendingImageList();
                             showMessage('图片已添加到待提交列表', 'success');
                             
@@ -2362,19 +2362,40 @@
         // 获取人员信息
         function getPeopleData() {
             const people = [];
-            document.querySelectorAll('.person-form').forEach(form => {
-                const name = form.querySelector('.person-name').value;
-                const id = form.querySelector('.person-id').value;
-                const household = form.querySelector('.person-household').value;
+            console.log('开始收集人员数据...');
+            console.log('找到的人员表单数量:', document.querySelectorAll('.person-form').length);
+            
+            document.querySelectorAll('.person-form').forEach((form, index) => {
+                console.log(`处理第 ${index+1} 个人员表单`);
+                const nameInput = form.querySelector('.person-name');
+                const idInput = form.querySelector('.person-id');
+                const householdInput = form.querySelector('.person-household');
+                
+                if (!nameInput || !idInput || !householdInput) {
+                    console.error('人员表单中缺少输入字段:', form.innerHTML);
+                    return;
+                }
+                
+                const name = nameInput.value;
+                const id = idInput.value;
+                const household = householdInput.value;
+                
+                console.log(`人员数据: 姓名=${name}, 证件号=${id}, 户籍=${household}`);
                 
                 if (name || id || household) {
-                    people.push({
-                        name: name,
-                        id_number: id,
-                        household_registration: household
-                    });
+                    const personData = {
+                        name: name || '',
+                        id_number: id || '',
+                        household_registration: household || ''
+                    };
+                    people.push(personData);
+                    console.log(`已添加第 ${index+1} 个人员数据:`, personData);
+                } else {
+                    console.log(`第 ${index+1} 个人员表单为空，跳过`);
                 }
             });
+            
+            console.log(`收集到 ${people.length} 个人员数据`);
             return people;
         }
         
@@ -2393,12 +2414,48 @@
             pendingImages.forEach((image, index) => {
                 const imageCard = document.createElement('div');
                 imageCard.className = 'image-card';
+                
+                // 准备所有图片信息
+                let infoHtml = `
+                    <p><i class="fas fa-clock"></i> ${new Date(image.time).toLocaleString()}</p>
+                    <p><i class="fas fa-map-marker-alt"></i> ${image.location || '未知位置'}</p>
+                    <p><i class="fas fa-car"></i> ${image.transportation || '未知交通方式'}</p>
+                `;
+                
+                // 添加描述信息
+                if (image.description) {
+                    infoHtml += `<p><i class="fas fa-info-circle"></i> ${image.description}</p>`;
+                }
+                
+                // 添加GPS信息 - 修复此处条件判断
+                console.log('GPS信息:', {latitude: image.latitude, longitude: image.longitude});
+                if (image.latitude || image.longitude) {
+                    // 使用字符串进行非空判断，因为经纬度可能是字符串形式
+                    const lat = image.latitude ? image.latitude : '未设置';
+                    const lng = image.longitude ? image.longitude : '未设置';
+                    infoHtml += `<p><i class="fas fa-map-pin"></i> GPS坐标: ${lat}, ${lng}</p>`;
+                }
+                
+                // 添加人员信息 - 简化为只显示姓名，用顿号分隔
+                if (image.people && image.people.length > 0) {
+                    // 过滤出有姓名的人员
+                    const namesList = image.people
+                        .map(person => person.name)
+                        .filter(name => name && name.trim() !== '');
+                    
+                    if (namesList.length > 0) {
+                        infoHtml += `<p><i class="fas fa-users"></i> 涉事人员: ${namesList.join('、')}</p>`;
+                    } else {
+                        infoHtml += `<p><i class="fas fa-users"></i> 涉事人员: (共${image.people.length}人，无姓名信息)</p>`;
+                    }
+                } else {
+                    infoHtml += '<p><i class="fas fa-users"></i> 无涉事人员</p>';
+                }
+                
                 imageCard.innerHTML = `
                     <img src="${image.preview}" alt="预览图片">
                     <div class="image-info">
-                        <p><i class="fas fa-clock"></i> ${new Date(image.time).toLocaleString()}</p>
-                        <p><i class="fas fa-map-marker-alt"></i> ${image.location || '未填写地点'}</p>
-                        <p><i class="fas fa-car"></i> ${image.transportation || '未填写交通方式'}</p>
+                        ${infoHtml}
                     </div>
                     <div class="image-actions">
                         <button class="btn small-btn edit-pending-btn" data-index="${index}">
@@ -2409,6 +2466,7 @@
                         </button>
                     </div>
                 `;
+                
                 container.appendChild(imageCard);
             });
             
@@ -2420,7 +2478,6 @@
                 });
             });
             
-            // 显示提交和取消按钮
             document.getElementById('submit-all-btn').style.display = 'block';
             document.getElementById('cancel-all-btn').style.display = 'block';
         }
@@ -2572,7 +2629,10 @@
             try {
                 showMessage('正在提交图片...', 'info');
                 
-                for (const image of pendingImages) {
+                for (let i = 0; i < pendingImages.length; i++) {
+                    const image = pendingImages[i];
+                    console.log(`提交第 ${i+1}/${pendingImages.length} 张图片: ${image.file.name}`);
+                    
                     const formData = new FormData();
                     formData.append('file', image.file);
                     formData.append('time', image.time);
@@ -2583,19 +2643,43 @@
                     if (image.latitude) formData.append('gps_latitude', image.latitude);
                     if (image.longitude) formData.append('gps_longitude', image.longitude);
                     
-                    if (image.people.length > 0) {
-                        formData.append('people_involved', JSON.stringify(image.people));
+                    // 处理人员数据
+                    console.log(`图片 ${i+1} 的人员数据:`, image.people);
+                    
+                    if (image.people && image.people.length > 0) {
+                        const peopleJSON = JSON.stringify(image.people);
+                        console.log(`序列化后的人员数据(${peopleJSON.length} 字符):`, peopleJSON);
+                        formData.append('people_involved', peopleJSON);
+                    } else {
+                        console.log('没有人员数据，设置为空数组');
+                        formData.append('people_involved', '[]');
+                    }
+                    
+                    // 记录表单数据
+                    console.log('提交的表单字段:');
+                    for (let [key, value] of formData.entries()) {
+                        if (key === 'file') {
+                            console.log(`- ${key}: [文件]`);
+                        } else {
+                            console.log(`- ${key}: ${value}`);
+                        }
                     }
                     
                     // 修正API路径
+                    console.log(`提交请求到: /api/images/${taskId}`);
                     const response = await authenticatedFetch(`/images/${taskId}`, {
                         method: 'POST',
                         body: formData
                     });
                     
                     if (!response.ok) {
+                        console.error(`上传失败，HTTP状态: ${response.status}`);
+                        const errorText = await response.text();
+                        console.error(`错误内容: ${errorText}`);
                         throw new Error(`上传图片 ${image.file.name} 失败`);
                     }
+                    
+                    console.log(`图片 ${i+1} 提交成功`);
                 }
                 
                 showMessage('所有图片上传成功', 'success');

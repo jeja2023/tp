@@ -114,12 +114,79 @@
         #logout-btn:hover {
             background-color: #c0392b;
         }
+        
+        /* 添加个人信息按钮样式 */
+        .btn-profile {
+            padding: 6px 12px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+            font-size: 14px;
+        }
+        
+        .btn-profile:hover {
+            background-color: #2980b9;
+        }
+        
+        /* 个人信息模态窗口样式 */
+        #profile-modal .modal-content {
+            max-width: 500px;
+        }
+        
+        .profile-form .form-group {
+            margin-bottom: 15px;
+        }
+        
+        .profile-form label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        
+        .profile-form input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        
+        .password-section {
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 1px solid #eee;
+        }
+        
+        .password-toggle {
+            margin-bottom: 15px;
+        }
+        
+        /* 修改密码按钮红色 */
+        #change-password-btn {
+            background-color: #e74c3c;
+        }
+        
+        #change-password-btn:hover {
+            background-color: #c0392b;
+        }
+        
+        /* 返回个人信息按钮蓝色 */
+        .back-to-profile-btn {
+            background-color: #3498db !important;
+        }
+        
+        .back-to-profile-btn:hover {
+            background-color: #2980b9 !important;
+        }
     </style>
 </head>
 <body>
     <nav class="navbar">
         <div class="navbar-brand">图片管理系统</div>
         <div class="navbar-user">
+            <button id="profile-btn" class="btn-profile">个人信息</button>
             <span class="welcome-text">欢迎，<span id="username"></span></span>
             <button id="logout-btn">退出</button>
         </div>
@@ -143,6 +210,57 @@
                 <p>用户审核与系统管理</p>
                 <button class="btn" onclick="window.location.href='/admin'">进入管理后台</button>
             </div>
+        </div>
+    </div>
+
+    <!-- 个人信息模态窗口 -->
+    <div id="profile-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>个人信息</h3>
+                <button class="close-btn">&times;</button>
+            </div>
+            <form id="profile-form" class="profile-form">
+                <div class="form-group">
+                    <label for="profile-username">用户名</label>
+                    <input type="text" id="profile-username" disabled>
+                </div>
+                <div class="form-group">
+                    <label for="profile-organization">单位</label>
+                    <input type="text" id="profile-organization" required>
+                </div>
+                <div class="form-group">
+                    <label for="profile-phone">手机号码</label>
+                    <input type="tel" id="profile-phone">
+                </div>
+                
+                <div class="modal-footer">
+                    <button type="button" class="btn secondary-btn close-btn">取消</button>
+                    <button type="button" id="change-password-btn" class="btn secondary-btn">修改密码</button>
+                    <button type="submit" class="btn primary-btn">保存</button>
+                </div>
+            </form>
+            
+            <!-- 修改密码表单 -->
+            <form id="password-form" class="profile-form" style="display: none;">
+                <div class="form-group">
+                    <label for="profile-current-password">当前密码</label>
+                    <input type="password" id="profile-current-password">
+                </div>
+                <div class="form-group">
+                    <label for="profile-new-password">新密码</label>
+                    <input type="password" id="profile-new-password">
+                </div>
+                <div class="form-group">
+                    <label for="profile-confirm-password">确认新密码</label>
+                    <input type="password" id="profile-confirm-password">
+                </div>
+                
+                <div class="modal-footer">
+                    <button type="button" class="btn secondary-btn back-to-profile-btn">返回个人信息</button>
+                    <button type="submit" class="btn primary-btn">更新密码</button>
+                </div>
+            </form>
         </div>
     </div>
 
@@ -194,7 +312,202 @@
                     window.location.href = '/login';
                 });
             }
+            
+            // 设置个人信息按钮事件
+            setupProfileModal();
         });
+        
+        // 个人信息模态窗口相关功能
+        function setupProfileModal() {
+            const profileBtn = document.getElementById('profile-btn');
+            const profileModal = document.getElementById('profile-modal');
+            const closeButtons = profileModal.querySelectorAll('.close-btn');
+            const profileForm = document.getElementById('profile-form');
+            const passwordForm = document.getElementById('password-form');
+            const changePasswordBtn = document.getElementById('change-password-btn');
+            const backToProfileBtn = profileModal.querySelector('.back-to-profile-btn');
+            
+            // 打开模态窗口并加载用户信息
+            profileBtn.addEventListener('click', function() {
+                loadUserProfile();
+                profileModal.style.display = 'flex';
+                // 确保显示个人信息表单
+                profileForm.style.display = 'block';
+                passwordForm.style.display = 'none';
+            });
+            
+            // 关闭模态窗口
+            closeButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    profileModal.style.display = 'none';
+                    // 重置表单
+                    profileForm.reset();
+                    passwordForm.reset();
+                });
+            });
+            
+            // 切换到修改密码页面
+            changePasswordBtn.addEventListener('click', function() {
+                profileForm.style.display = 'none';
+                passwordForm.style.display = 'block';
+            });
+            
+            // 返回个人信息页面
+            backToProfileBtn.addEventListener('click', function() {
+                passwordForm.style.display = 'none';
+                profileForm.style.display = 'block';
+            });
+            
+            // 提交个人信息表单
+            profileForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                saveUserProfile();
+            });
+            
+            // 提交密码修改表单
+            passwordForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                updatePassword();
+            });
+        }
+        
+        // 加载用户信息
+        function loadUserProfile() {
+            const token = localStorage.getItem('token');
+            if (!token) return;
+            
+            fetch('/api/users/me', {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            })
+            .then(response => {
+                if (response.ok) {
+                    return response.json();
+                } else {
+                    throw new Error('获取用户信息失败');
+                }
+            })
+            .then(userData => {
+                console.log('获取到用户详细信息:', userData);
+                // 填充表单
+                document.getElementById('profile-username').value = userData.username || '';
+                document.getElementById('profile-organization').value = userData.company || '';
+                document.getElementById('profile-phone').value = userData.phone || '';
+            })
+            .catch(error => {
+                console.error('获取用户信息失败:', error);
+                alert('获取用户信息失败，请稍后再试');
+            });
+        }
+        
+        // 保存用户信息
+        function saveUserProfile() {
+            const token = localStorage.getItem('token');
+            if (!token) return;
+            
+            const organization = document.getElementById('profile-organization').value;
+            const phone = document.getElementById('profile-phone').value;
+            
+            // 准备数据
+            const userData = {
+                company: organization,
+                phone: phone
+            };
+            
+            // 发送请求到后端API
+            fetch('/api/users/profile', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(userData)
+            })
+            .then(response => {
+                if (response.ok) {
+                    return response.json();
+                } else {
+                    return response.json().then(err => {
+                        throw new Error(err.detail || '更新用户信息失败');
+                    });
+                }
+            })
+            .then(result => {
+                alert('个人信息更新成功');
+                // 关闭模态窗口
+                document.getElementById('profile-modal').style.display = 'none';
+                // 重新加载信息
+                loadUserProfile();
+            })
+            .catch(error => {
+                console.error('更新用户信息失败:', error);
+                alert(error.message || '更新用户信息失败，请稍后再试');
+            });
+        }
+        
+        // 更新密码
+        function updatePassword() {
+            const token = localStorage.getItem('token');
+            if (!token) return;
+            
+            const currentPassword = document.getElementById('profile-current-password').value;
+            const newPassword = document.getElementById('profile-new-password').value;
+            const confirmPassword = document.getElementById('profile-confirm-password').value;
+            
+            // 验证密码
+            if (!currentPassword) {
+                alert('请输入当前密码');
+                return;
+            }
+            
+            if (!newPassword) {
+                alert('请输入新密码');
+                return;
+            }
+            
+            if (newPassword !== confirmPassword) {
+                alert('两次输入的新密码不一致');
+                return;
+            }
+            
+            // 准备数据
+            const passwordData = {
+                current_password: currentPassword,
+                new_password: newPassword,
+                password_confirm: confirmPassword
+            };
+            
+            // 发送请求
+            fetch('/api/users/change-password', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(passwordData)
+            })
+            .then(response => {
+                if (response.ok) {
+                    return response.json();
+                } else {
+                    return response.json().then(err => {
+                        throw new Error(err.detail || '密码修改失败');
+                    });
+                }
+            })
+            .then(result => {
+                alert('密码修改成功');
+                // 关闭模态窗口
+                document.getElementById('profile-modal').style.display = 'none';
+                // 重置表单
+                document.getElementById('password-form').reset();
+            })
+            .catch(error => {
+                console.error('密码修改失败:', error);
+                alert(error.message || '密码修改失败，请稍后再试');
+            });
+        }
         
         // 检查当前用户是否是管理员
         function checkIfAdmin() {

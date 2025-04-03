@@ -55,7 +55,8 @@ last_key_rotation.txt
 *.db
 
 # 临时文件
-temp/
+backend/temp/
+*.csv
 tmp/
 
 # 系统文件
@@ -129,3 +130,10 @@ lib64
 # 地图数据目录
 frontend/static/js/MAP_zxy/*
 !frontend/static/js/MAP_zxy/.gitkeep 
+
+# 敏感信息和配置文件
+.env
+backend/last_key_rotation.txt
+backend/keybackups/
+logs/
+backend/temp/ 

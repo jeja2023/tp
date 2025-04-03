@@ -63,6 +63,7 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('logout-btn').addEventListener('click', function() {
         localStorage.removeItem('token');
         localStorage.removeItem('username');
+        localStorage.removeItem('user_id');
         window.location.href = '/login';
     });
 });
@@ -126,15 +127,23 @@ function renderTasksList(tasks) {
         return;
     }
     
-    // 确保任务按创建时间降序排序
-    const sortedTasks = [...tasks].sort((a, b) => {
-        return new Date(b.created_at) - new Date(a.created_at);
-    });
+    // 确保任务按ID降序排序
+    const sortedTasks = [...tasks].sort((a, b) => b.id - a.id);
     
     // 先创建所有行并保持正确顺序
     const rows = sortedTasks.map(task => {
         const row = document.createElement('tr');
-        const createdAt = new Date(task.created_at).toLocaleString();
+        // 直接使用数据库中的时间
+        const createdAt = new Date(task.created_at);
+        const formattedDate = createdAt.toLocaleString('zh-CN', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: false
+        });
         
         // 先设置基本信息，添加创建人字段
         row.innerHTML = `
@@ -142,7 +151,7 @@ function renderTasksList(tasks) {
             <td>${task.title}</td>
             <td>${task.description || '无描述'}</td>
             <td>${task.owner ? task.owner.username : '未知'}</td>
-            <td>${createdAt}</td>
+            <td>${formattedDate}</td>
             <td class="actions">
                 <span class="loading-permissions">加载权限中...</span>
             </td>
@@ -408,13 +417,12 @@ function openEditTaskModal(taskId) {
 
 // 打开分享任务模态窗口
 function openShareTaskModal(taskId, taskTitle) {
-    console.log('打开分享任务模态窗口');
+    console.log('打开分享任务模态窗口，任务ID:', taskId, '任务标题:', taskTitle);
     const modal = document.getElementById('share-task-modal');
     if (modal) {
         modal.style.display = 'flex';
         document.getElementById('share-task-id').value = taskId;
-        document.getElementById('share-task-title').textContent = taskTitle;
-        document.getElementById('share-task-form').reset();
+        document.getElementById('share-task-title').value = taskTitle;
     } else {
         console.error('找不到分享任务模态窗口');
     }
@@ -422,12 +430,15 @@ function openShareTaskModal(taskId, taskTitle) {
 
 // 打开管理权限模态窗口
 function openManagePermissionsModal(taskId, taskTitle) {
-    console.log('打开管理权限模态窗口');
+    console.log('打开管理权限模态窗口，任务ID:', taskId, '任务标题:', taskTitle);
     const modal = document.getElementById('manage-permissions-modal');
     if (modal) {
         modal.style.display = 'flex';
-        document.getElementById('manage-permissions-title').textContent = taskTitle;
-        
+        // 更新模态窗口标题
+        const titleElement = document.getElementById('manage-permissions-title');
+        if (titleElement) {
+            titleElement.textContent = taskTitle;
+        }
         // 加载任务权限列表
         loadTaskPermissions(taskId);
     } else {
@@ -435,147 +446,21 @@ function openManagePermissionsModal(taskId, taskTitle) {
     }
 }
 
-// 加载任务权限列表
-function loadTaskPermissions(taskId) {
-    console.log('开始加载任务权限列表...');
-    const token = localStorage.getItem('token');
-    const tableBody = document.getElementById('permissions-table-body');
-    
-    if (!tableBody) {
-        console.error('找不到权限表格元素');
-        return;
+// 确认删除任务
+function confirmDeleteTask(taskId, taskTitle) {
+    console.log('确认删除任务，任务ID:', taskId, '任务标题:', taskTitle);
+    const confirmation = confirm('您确定要删除这个任务吗？');
+    if (confirmation) {
+        deleteTask(taskId);
     }
-    
-    tableBody.innerHTML = '<tr><td colspan="4" class="loading-text">加载中...</td></tr>';
-    
-    fetch(apiUrl(`/tasks/${taskId}/permissions`), {
-        method: 'GET',
-        headers: {
-            'Authorization': `Bearer ${token}`
-        }
-    })
-    .then(response => {
-        if (!response.ok) {
-            if (response.status === 403) {
-                return response.json().then(data => {
-                    throw new Error(data.detail || '没有权限查看权限列表');
-                });
-            }
-            throw new Error('加载权限列表失败');
-        }
-        return response.json();
-    })
-    .then(permissions => {
-        console.log('成功获取权限数据:', permissions);
-        renderPermissionsList(permissions, taskId);
-        
-        // 添加提示信息
-        const currentUsername = localStorage.getItem('username');
-        const isTaskCreator = permissions.some(p => 
-            p.shared_by && p.shared_by.is_creator && p.shared_by.username === currentUsername
-        );
-    })
-    .catch(error => {
-        console.error('加载权限出错:', error);
-        tableBody.innerHTML = `<tr><td colspan="4" class="error-text">${error.message || '加载权限列表失败，请重试'}</td></tr>`;
-    });
 }
 
-// 渲染权限列表
-function renderPermissionsList(permissions, taskId) {
-    const tableBody = document.getElementById('permissions-table-body');
-    const currentUsername = localStorage.getItem('username');
-    
-    if (!tableBody) {
-        console.error('找不到权限表格元素');
-        return;
-    }
-    
-    if (permissions.length === 0) {
-        tableBody.innerHTML = '<tr><td colspan="4" class="no-data">暂无分享记录</td></tr>';
-        return;
-    }
-    
-    // 查找任务创建者
-    let isTaskCreator = false;
-    permissions.forEach(permission => {
-        if (permission.shared_by && permission.shared_by.is_creator && permission.shared_by.username === currentUsername) {
-            isTaskCreator = true;
-        }
-    });
-    
-    tableBody.innerHTML = '';
-    permissions.forEach(permission => {
-        // 不展示当前用户自己的权限
-        if (permission.username === currentUsername) {
-            return;
-        }
-        
-        const row = document.createElement('tr');
-        
-        let permissionTypeText = '只读';
-        if (permission.permission_type === 'admin') {
-            permissionTypeText = '管理员';
-        } else if (permission.permission_type === 'edit') {
-            permissionTypeText = '编辑';
-        }
-        
-        // 构建分享者信息
-        let sharedByText = '';
-        let canRevoke = false;
-        
-        if (permission.shared_by) {
-            sharedByText = permission.shared_by.username;
-            if (permission.shared_by.is_creator) {
-                sharedByText += ' (创建者)';
-            }
-            
-            // 判断是否可以取消分享：如果是任务创建者或是自己分享的
-            canRevoke = isTaskCreator || permission.shared_by.username === currentUsername;
-        }
-        
-        row.innerHTML = `
-            <td>${permission.username}</td>
-            <td>${permissionTypeText}</td>
-            <td>${sharedByText}</td>
-            <td>
-                ${canRevoke ? 
-                    `<button class="btn danger-btn revoke-permission-btn" 
-                            style="background-color: #ff4d4f; color: white;"
-                            data-task-id="${taskId}" 
-                            data-username="${permission.username}">取消分享</button>` : 
-                    `<span class="disabled-text" title="只有任务创建者或分享者可以取消">无法取消</span>`
-                }
-            </td>
-        `;
-        
-        tableBody.appendChild(row);
-    });
-    
-    // 添加取消分享按钮的事件监听
-    addRevokePermissionListeners();
-}
-
-// 添加取消分享按钮的事件监听
-function addRevokePermissionListeners() {
-    document.querySelectorAll('.revoke-permission-btn').forEach(button => {
-        button.addEventListener('click', function() {
-            const taskId = this.dataset.taskId;
-            const username = this.dataset.username;
-            
-            if (confirm(`确定要取消与用户 ${username} 的分享吗？`)) {
-                revokePermission(taskId, username);
-            }
-        });
-    });
-}
-
-// 取消分享
-function revokePermission(taskId, username) {
-    console.log('取消分享:', taskId, username);
+// 删除任务
+function deleteTask(taskId) {
+    console.log('删除任务，任务ID:', taskId);
     const token = localStorage.getItem('token');
     
-    fetch(apiUrl(`/tasks/${taskId}/permissions/${username}`), {
+    fetch(apiUrl(`/tasks/${taskId}`), {
         method: 'DELETE',
         headers: {
             'Authorization': `Bearer ${token}`
@@ -583,34 +468,126 @@ function revokePermission(taskId, username) {
     })
     .then(response => {
         if (!response.ok) {
-            // 处理不同的错误状态
-            if (response.status === 403) {
-                return response.json().then(data => {
-                    throw new Error(data.detail || '没有权限执行此操作');
-                });
-            }
-            throw new Error('取消分享失败');
+            console.error('删除任务失败:', response.status);
+            showMessage('删除任务失败，请刷新页面重试', 'error');
+            return;
         }
-        return response.json();
-    })
-    .then(data => {
-        console.log('取消分享成功:', data);
-        // 重新加载权限列表
-        loadTaskPermissions(taskId);
-        showMessage(`已取消与用户 ${username} 的分享`, 'success');
-        // 触发页面刷新事件
-        document.dispatchEvent(new Event('taskOperationComplete'));
+        showMessage('任务删除成功', 'success');
+        loadTasks();
     })
     .catch(error => {
-        console.error('取消分享出错:', error);
-        showMessage(error.message || '取消分享失败', 'error');
+        console.error('删除任务出错:', error);
+        showMessage('删除任务失败，请刷新页面重试', 'error');
     });
+}
+
+// 显示消息
+function showMessage(message, type) {
+    // 创建消息容器
+    const messageContainer = document.createElement('div');
+    messageContainer.className = `message-container ${type}`;
+    
+    // 创建消息内容
+    const messageContent = document.createElement('div');
+    messageContent.className = 'message-content';
+    messageContent.textContent = message;
+    
+    // 创建关闭按钮
+    const closeButton = document.createElement('button');
+    closeButton.className = 'message-close';
+    closeButton.innerHTML = '&times;';
+    closeButton.onclick = () => messageContainer.remove();
+    
+    // 组装消息
+    messageContent.appendChild(closeButton);
+    messageContainer.appendChild(messageContent);
+    
+    // 添加样式
+    const style = document.createElement('style');
+    style.textContent = `
+        .message-container {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 9999;
+            min-width: 300px;
+            max-width: 80%;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            animation: messageFadeIn 0.3s ease;
+        }
+        
+        .message-content {
+            position: relative;
+            padding-right: 30px;
+            font-size: 16px;
+            line-height: 1.5;
+        }
+        
+        .message-close {
+            position: absolute;
+            right: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+            color: #666;
+            padding: 0 5px;
+        }
+        
+        .message-close:hover {
+            color: #333;
+        }
+        
+        .success {
+            background-color: #f0f9eb;
+            border: 1px solid #e1f3d8;
+            color: #67c23a;
+        }
+        
+        .error {
+            background-color: #fef0f0;
+            border: 1px solid #fde2e2;
+            color: #f56c6c;
+        }
+        
+        @keyframes messageFadeIn {
+            from {
+                opacity: 0;
+                transform: translate(-50%, -60%);
+            }
+            to {
+                opacity: 1;
+                transform: translate(-50%, -50%);
+            }
+        }
+    `;
+    
+    // 添加样式到页面
+    if (!document.getElementById('message-style')) {
+        style.id = 'message-style';
+        document.head.appendChild(style);
+    }
+    
+    // 添加到页面
+    document.body.appendChild(messageContainer);
+    
+    // 3秒后自动关闭
+    setTimeout(() => {
+        messageContainer.style.animation = 'messageFadeOut 0.3s ease';
+        setTimeout(() => messageContainer.remove(), 300);
+    }, 3000);
 }
 
 // 关闭所有模态窗口
 function closeAllModals() {
     console.log('关闭所有模态窗口');
-    document.querySelectorAll('.modal').forEach(modal => {
+    const modals = document.querySelectorAll('.modal');
+    modals.forEach(modal => {
         modal.style.display = 'none';
     });
 }
@@ -621,6 +598,20 @@ function createTask() {
     const title = document.getElementById('create-task-title').value;
     const description = document.getElementById('create-task-description').value;
     const token = localStorage.getItem('token');
+    const userId = localStorage.getItem('user_id');
+    
+    if (!userId) {
+        showMessage('用户ID不存在，请重新登录', 'error');
+        return;
+    }
+    
+    const requestData = {
+        title: title,
+        description: description,
+        user_id: parseInt(userId)
+    };
+    
+    console.log('发送创建任务请求:', requestData);
     
     fetch(apiUrl('/tasks/'), {
         method: 'POST',
@@ -628,14 +619,13 @@ function createTask() {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({
-            title: title,
-            description: description
-        })
+        body: JSON.stringify(requestData)
     })
     .then(response => {
         if (!response.ok) {
-            throw new Error('创建任务失败');
+            return response.json().then(data => {
+                throw new Error(data.detail || '创建任务失败');
+            });
         }
         return response.json();
     })
@@ -647,7 +637,7 @@ function createTask() {
     })
     .catch(error => {
         console.error('创建任务出错:', error);
-        showMessage('创建任务失败', 'error');
+        showMessage(error.message || '创建任务失败', 'error');
     });
 }
 
@@ -659,20 +649,33 @@ function updateTask() {
     const description = document.getElementById('edit-task-description').value;
     const token = localStorage.getItem('token');
     
+    const requestData = {
+        title: title,
+        description: description
+    };
+    
+    console.log('发送的请求数据:', requestData);
+    
     fetch(apiUrl(`/tasks/${taskId}`), {
         method: 'PUT',
         headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({
-            title: title,
-            description: description
-        })
+        body: JSON.stringify(requestData)
     })
     .then(response => {
         if (!response.ok) {
-            throw new Error('更新任务失败');
+            // 尝试解析错误响应为 JSON
+            return response.text().then(text => {
+                try {
+                    const errorData = JSON.parse(text);
+                    throw new Error(errorData.detail || '更新任务失败');
+                } catch (e) {
+                    // 如果不是 JSON 格式，使用状态文本
+                    throw new Error(`更新任务失败: ${response.statusText}`);
+                }
+            });
         }
         return response.json();
     })
@@ -686,7 +689,141 @@ function updateTask() {
     })
     .catch(error => {
         console.error('更新任务出错:', error);
-        showMessage('更新任务失败', 'error');
+        showMessage(error.message || '更新任务失败', 'error');
+    });
+}
+
+// 加载任务权限列表
+function loadTaskPermissions(taskId) {
+    console.log('加载任务权限列表，任务ID:', taskId);
+    const token = localStorage.getItem('token');
+    const permissionsTableBody = document.getElementById('permissions-table-body');
+    
+    if (!permissionsTableBody) {
+        console.error('找不到权限表格元素');
+        return;
+    }
+    
+    // 显示加载中
+    permissionsTableBody.innerHTML = '<tr><td colspan="4" class="loading-text">加载中...</td></tr>';
+    
+    // 获取任务权限列表
+    fetch(apiUrl(`/tasks/${taskId}/permissions`), {
+        method: 'GET',
+        headers: {
+            'Authorization': `Bearer ${token}`
+        }
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('获取权限列表失败');
+        }
+        return response.json();
+    })
+    .then(permissions => {
+        console.log('获取到权限列表:', permissions);
+        
+        if (!permissions || permissions.length === 0) {
+            permissionsTableBody.innerHTML = '<tr><td colspan="4" class="no-data">暂无权限记录</td></tr>';
+            return;
+        }
+        
+        // 清空表格
+        permissionsTableBody.innerHTML = '';
+        
+        // 添加权限记录
+        permissions.forEach(permission => {
+            const row = document.createElement('tr');
+            
+            // 获取分享来源信息
+            let sharedByText = '-';
+            if (permission.shared_by) {
+                sharedByText = permission.shared_by.is_creator ? 
+                    `${permission.shared_by.username} (创建者)` : 
+                    permission.shared_by.username;
+            }
+            
+            row.innerHTML = `
+                <td>${permission.username}</td>
+                <td>${getPermissionTypeText(permission.permission_type)}</td>
+                <td>${sharedByText}</td>
+                <td>
+                    <button class="btn danger-btn remove-permission-btn" 
+                            data-username="${permission.username}" 
+                            data-task-id="${taskId}">
+                        删除权限
+                    </button>
+                </td>
+            `;
+            
+            permissionsTableBody.appendChild(row);
+        });
+        
+        // 添加删除权限按钮的事件监听
+        addRemovePermissionButtonListeners();
+    })
+    .catch(error => {
+        console.error('加载权限列表失败:', error);
+        permissionsTableBody.innerHTML = '<tr><td colspan="4" class="error-text">加载失败，请刷新页面重试</td></tr>';
+    });
+}
+
+// 获取权限类型的显示文本
+function getPermissionTypeText(type) {
+    switch (type) {
+        case 'view':
+            return '查看';
+        case 'edit':
+            return '编辑';
+        case 'admin':
+            return '管理员';
+        default:
+            return type;
+    }
+}
+
+// 添加删除权限按钮的事件监听
+function addRemovePermissionButtonListeners() {
+    document.querySelectorAll('.remove-permission-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            const username = this.dataset.username;
+            const taskId = this.dataset.taskId;
+            
+            if (confirm(`确定要删除用户 "${username}" 的权限吗？`)) {
+                removeTaskPermission(taskId, username);
+            }
+        });
+    });
+}
+
+// 删除任务权限
+function removeTaskPermission(taskId, username) {
+    console.log('删除任务权限，任务ID:', taskId, '用户名:', username);
+    const token = localStorage.getItem('token');
+    
+    fetch(apiUrl(`/tasks/${taskId}/permissions/${username}`), {
+        method: 'DELETE',
+        headers: {
+            'Authorization': `Bearer ${token}`
+        }
+    })
+    .then(response => {
+        if (!response.ok) {
+            return response.json().then(data => {
+                throw new Error(data.detail || '删除权限失败');
+            });
+        }
+        return response.json();
+    })
+    .then(() => {
+        console.log('权限删除成功');
+        showMessage('权限删除成功', 'success');
+        // 重新加载权限列表
+        loadTaskPermissions(taskId);
+    })
+    .catch(error => {
+        console.error('删除权限失败:', error);
+        showMessage(error.message || '删除权限失败', 'error');
     });
 }
 
@@ -695,8 +832,20 @@ function shareTask() {
     console.log('分享任务');
     const taskId = document.getElementById('share-task-id').value;
     const username = document.getElementById('share-task-username').value;
-    const permission = document.getElementById('share-task-permission').value;
+    const permissionType = document.getElementById('share-task-permission').value;
     const token = localStorage.getItem('token');
+    
+    if (!username) {
+        showMessage('请输入用户名', 'error');
+        return;
+    }
+    
+    const requestData = {
+        username: username,
+        permission_type: permissionType
+    };
+    
+    console.log('发送分享任务请求:', requestData);
     
     fetch(apiUrl(`/tasks/${taskId}/permissions/`), {
         method: 'POST',
@@ -704,81 +853,23 @@ function shareTask() {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({
-            username: username,
-            permission_type: permission
-        })
+        body: JSON.stringify(requestData)
     })
     .then(response => {
         if (!response.ok) {
-            throw new Error('分享任务失败');
+            return response.json().then(data => {
+                throw new Error(data.detail || '分享任务失败');
+            });
         }
         return response.json();
     })
     .then(data => {
         console.log('任务分享成功:', data);
         closeAllModals();
-        showMessage(`已成功分享任务给 ${username}`, 'success');
-        // 触发页面刷新事件
-        document.dispatchEvent(new Event('taskOperationComplete'));
+        showMessage('任务分享成功', 'success');
     })
     .catch(error => {
         console.error('分享任务出错:', error);
-        showMessage('分享任务失败', 'error');
+        showMessage(error.message || '分享任务失败', 'error');
     });
-}
-
-// 确认删除任务
-function confirmDeleteTask(taskId, taskTitle) {
-    if (confirm(`确定要删除任务"${taskTitle}"吗？此操作将删除该任务下的所有图片和权限，且不可恢复。`)) {
-        deleteTask(taskId);
-    }
-}
-
-// 删除任务
-function deleteTask(taskId) {
-    console.log('执行删除任务:', taskId);
-    const token = localStorage.getItem('token');
-    
-    fetch(apiUrl(`/tasks/${taskId}`), {
-        method: 'DELETE',
-        headers: {
-            'Authorization': `Bearer ${token}`
-        }
-    })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error('删除任务失败');
-        }
-        return response.json();
-    })
-    .then(data => {
-        console.log('任务删除成功:', data);
-        showMessage('任务删除成功', 'success');
-        // 触发页面刷新事件
-        document.dispatchEvent(new Event('taskOperationComplete'));
-    })
-    .catch(error => {
-        console.error('删除任务出错:', error);
-        showMessage('删除任务失败', 'error');
-    });
-}
-
-// 显示消息提示
-function showMessage(message, type) {
-    console.log('显示消息:', message, '类型:', type);
-    
-    // 检查是否已存在消息元素
-    let messageElement = document.querySelector('.message');
-    
-    // 如果不存在，创建一个新的
-    if (!messageElement) {
-        messageElement = document.createElement('div');
-        messageElement.className = 'message';
-        document.body.appendChild(messageElement);
-    }
-    
-    // 设置消息内容和样式
-    messageElement.textContent = message;
-    messageElement.className = `message ${type}`;
 }

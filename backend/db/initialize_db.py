@@ -6,6 +6,10 @@
 import os
 import sys
 from pathlib import Path
+from dotenv import load_dotenv
+
+# 加载环境变量
+load_dotenv()
 
 # 添加项目根目录到Python路径
 current_dir = Path(__file__).parent
@@ -17,6 +21,8 @@ from backend.models.models import Base
 from backend.db.database import engine, get_db
 from sqlalchemy import inspect, text
 from sqlalchemy.orm import Session
+from backend.config import settings
+from backend.utils.password import get_password_hash, verify_password  # 从password.py导入密码函数
 
 # 使用新的日志配置
 logger = setup_logger("db_init")
@@ -29,7 +35,6 @@ def initialize_database():
         
         # 检查数据库中是否已存在表
         existing_tables = inspector.get_table_names()
-        logger.info(f"检测到已存在的表: {existing_tables}")
         
         # 创建所有在模型中定义但在数据库中不存在的表
         Base.metadata.create_all(bind=engine)
@@ -51,33 +56,43 @@ def initialize_base_data():
         
         # 检查是否需要添加初始管理员账号
         from backend.models.models import User
-        from passlib.context import CryptContext
-        from config import settings
-        
-        pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
         
         # 检查是否已存在管理员账号
-        admin_exists = db.query(User).filter(User.username == settings.ADMIN_USERNAME).first()
+        admin_username = os.getenv("ADMIN_USERNAME", "admin")
+        admin_exists = db.query(User).filter(User.username == admin_username).first()
         
         if not admin_exists:
-            # 从配置中获取管理员密码，如果未设置则使用默认密码
-            admin_password = settings.ADMIN_PASSWORD or "admin123"
+            # 从环境变量获取管理员密码，如果未设置则使用默认密码
+            admin_password = os.getenv("ADMIN_PASSWORD", "Admin@123")
+            # 移除前后空格和注释
+            admin_password = admin_password.split('#')[0].strip()
+            
+            admin_company = os.getenv("ADMIN_COMPANY", "开发测试团队")
+            admin_phone = os.getenv("ADMIN_PHONE", "13800138000")
+            
+            logger.info(f"创建管理员账号: 用户名={admin_username}, 密码={admin_password}")
+            
             # 创建管理员账号
-            hashed_password = pwd_context.hash(admin_password)
+            hashed_password = get_password_hash(admin_password)  # 使用 utils.py 中的函数
             admin_user = User(
-                username=settings.ADMIN_USERNAME,
-                hashed_password=hashed_password,
-                company=settings.ADMIN_COMPANY,
-                phone=settings.ADMIN_PHONE,
+                username=admin_username,
+                password=hashed_password,
+                company=admin_company,
+                phone=admin_phone,
                 is_active=True,
-                is_admin=True
+                is_admin=True,
+                is_approved=True
             )
             db.add(admin_user)
             db.commit()
-            logger.debug("创建管理员账号成功")
-        else:
-            logger.debug("管理员账号已存在，跳过创建")
+            logger.info("已创建管理员账号")
             
+            # 验证密码是否正确
+            if not verify_password(admin_password, hashed_password):
+                logger.error("管理员密码验证失败！")
+            else:
+                logger.info("管理员密码验证成功！")
+        
     except Exception as e:
         logger.error(f"初始化基础数据失败: {str(e)}", exc_info=True)
         db.rollback()

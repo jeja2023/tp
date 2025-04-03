@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Request, HTTPException
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
-from config import settings
+from backend.config import settings
 
 router = APIRouter()
 templates = Jinja2Templates(directory="frontend")

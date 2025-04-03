@@ -3,7 +3,7 @@ from fastapi.responses import FileResponse, RedirectResponse, HTMLResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.requests import Request
 from fastapi.staticfiles import StaticFiles
-from config import settings
+from backend.config import settings
 import os
 from fastapi import HTTPException
 

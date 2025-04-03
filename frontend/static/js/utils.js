@@ -63,6 +63,13 @@ function formatDateTime(date) {
     });
 }
 
+// 获取当前东八区时间
+function getCurrentShanghaiTime() {
+    const now = new Date();
+    const shanghaiTime = new Date(now.getTime() + (8 * 60 * 60 * 1000));
+    return shanghaiTime.toISOString();
+}
+
 // 格式化文件大小
 function formatFileSize(bytes) {
     if (bytes === 0) return '0 B';

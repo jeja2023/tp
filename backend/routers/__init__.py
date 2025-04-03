@@ -4,4 +4,5 @@
 from .base import router as base_router
 from .users import router as users_router, oauth2_router
 from .tasks import router as tasks_router
-from .images import router as images_router 
+from .images import router as images_router
+from .logs import router as logs_router 

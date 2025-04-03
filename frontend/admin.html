@@ -110,6 +110,508 @@
             background: #3498db;
             color: white;
         }
+        
+        /* 系统日志样式 */
+        .log-controls {
+            margin-bottom: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .log-filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .filter-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            align-items: flex-end;
+        }
+        
+        .filter-item {
+            flex: 1;
+            min-width: 150px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        
+        .filter-item label {
+            font-weight: 500;
+            margin-bottom: 2px;
+        }
+        
+        .search-wrapper {
+            display: flex;
+            width: 100%;
+        }
+        
+        .search-wrapper input {
+            flex: 1;
+            border-top-right-radius: 0;
+            border-bottom-right-radius: 0;
+        }
+        
+        .search-wrapper button {
+            border-top-left-radius: 0;
+            border-bottom-left-radius: 0;
+        }
+        
+        .log-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 5px;
+        }
+        
+        @media (max-width: 768px) {
+            .filter-item {
+                min-width: 100%;
+            }
+            
+            .log-actions {
+                flex-wrap: wrap;
+            }
+            
+            .log-actions button {
+                flex: 1;
+            }
+        }
+        
+        .log-container {
+            max-height: 450px;
+            overflow-y: auto;
+            border: 1px solid #e1e8ed;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            margin-bottom: 20px;
+            background: white;
+        }
+        
+        .log-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+            background: white;
+        }
+        
+        .log-table th, .log-table td {
+            padding: 8px 12px;
+            text-align: left;
+            border-bottom: 1px solid #e1e8ed;
+            vertical-align: top;
+        }
+        
+        .log-table th {
+            position: sticky;
+            top: 0;
+            background-color: #f8f9fa;
+            z-index: 10;
+            font-weight: 600;
+            color: #444;
+            border-bottom: 2px solid #ddd;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .log-table tr:hover {
+            background-color: #f5f8fa;
+        }
+        
+        .log-table td {
+            max-width: 200px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        
+        .log-level {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .log-level-info {
+            background-color: #e3f2fd;
+            color: #1976d2;
+            border: 1px solid #bbdefb;
+        }
+        
+        .log-level-warning {
+            background-color: #fff3e0;
+            color: #f57c00;
+            border: 1px solid #ffe0b2;
+        }
+        
+        .log-level-error {
+            background-color: #ffebee;
+            color: #d32f2f;
+            border: 1px solid #ffcdd2;
+        }
+        
+        .log-message {
+            max-width: none !important;
+            white-space: normal !important;
+            word-break: break-word;
+            line-height: 1.5;
+            color: #333;
+            font-size: 12px;
+            padding: 4px 0;
+        }
+        
+        .log-message pre {
+            margin: 4px 0;
+            padding: 8px;
+            background: #f8f9fa;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 11px;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+        
+        .log-timestamp {
+            color: #666;
+            font-size: 12px;
+            white-space: nowrap;
+        }
+        
+        .log-source {
+            text-transform: uppercase;
+            font-size: 11px;
+            font-weight: 600;
+            color: #555;
+            letter-spacing: 0.5px;
+        }
+        
+        .log-ip {
+            font-family: monospace;
+            font-size: 11px;
+            color: #666;
+        }
+        
+        .log-request-id {
+            font-family: monospace;
+            font-size: 11px;
+            color: #6c757d;
+        }
+        
+        .log-method {
+            font-weight: 600;
+            font-size: 12px;
+            color: #444;
+        }
+        
+        .log-status {
+            font-weight: 600;
+            font-size: 12px;
+        }
+        
+        .log-status .text-success {
+            color: #2e7d32;
+        }
+        
+        .log-status .text-warning {
+            color: #f57c00;
+        }
+        
+        .log-status .text-danger {
+            color: #d32f2f;
+        }
+        
+        .log-time {
+            font-family: monospace;
+            font-size: 11px;
+            color: #6a1b9a;
+        }
+        
+        .table-danger {
+            background-color: #ffebee;
+        }
+        
+        .table-warning {
+            background-color: #fff3e0;
+        }
+        
+        .table-info {
+            background-color: #e3f2fd;
+        }
+        
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-top: 20px;
+            gap: 15px;
+        }
+        
+        #page-info {
+            font-size: 14px;
+            color: #666;
+            background: #f5f5f5;
+            padding: 6px 12px;
+            border-radius: 4px;
+        }
+        
+        .loading-text, .no-data, .error-text {
+            padding: 20px;
+            text-align: center;
+            color: #666;
+        }
+        
+        .loading-text::before {
+            content: '';
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid #ddd;
+            border-top-color: #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+            vertical-align: middle;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .no-data {
+            color: #888;
+            font-style: italic;
+        }
+        
+        .error-text {
+            color: #e74c3c;
+        }
+        
+        /* 通知样式 */
+        .notification {
+            position: fixed;
+            right: 20px;
+            bottom: 20px;
+            padding: 8px 12px;
+            border-radius: 4px;
+            color: white;
+            font-size: 12px;
+            z-index: 9999;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+            opacity: 1;
+            transition: opacity 0.3s, transform 0.3s;
+            max-width: 300px;
+            min-width: 200px;
+            transform: translateY(0);
+            display: flex;
+            align-items: center;
+            margin-top: 8px;
+            animation: slideInUp 0.3s ease-out;
+            border-left: 3px solid rgba(255, 255, 255, 0.5);
+        }
+
+        @keyframes slideInUp {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .notification.export-notification,
+        .notification.cleanup-notification {
+            bottom: 70px;
+        }
+
+        .notification.export-success,
+        .notification.cleanup-success {
+            bottom: 20px;
+        }
+        
+        .notification i {
+            margin-right: 6px;
+            font-size: 12px;
+        }
+        
+        .success-notification {
+            background-color: #4CAF50;
+            border-left-color: #2E7D32;
+        }
+        
+        .error-notification {
+            background-color: #F44336;
+            border-left-color: #B71C1C;
+        }
+        
+        .warning-notification {
+            background-color: #FF9800;
+            border-left-color: #E65100;
+        }
+        
+        .info-notification {
+            background-color: #2196F3;
+            border-left-color: #0D47A1;
+        }
+        
+        .fadeOut {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+        
+        /* 添加清理日志按钮 */
+        .cleanup-logs {
+            margin-top: 15px;
+            text-align: right;
+        }
+        
+        /* 日志容器样式优化 */
+        .log-container {
+            max-height: 600px;
+            overflow-y: auto;
+            border: 1px solid #e1e8ed;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            margin-bottom: 20px;
+            background: white;
+        }
+        
+        /* 滚动条样式 */
+        .log-container::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        .log-container::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+        
+        .log-container::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 4px;
+        }
+        
+        .log-container::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+        
+        /* 加入日志请求路径样式 */
+        .log-path-indicator {
+            display: inline-block;
+            padding: 2px 5px;
+            font-size: 11px;
+            border-radius: 3px;
+            background-color: #f8f9fa;
+            border: 1px solid #e9ecef;
+        }
+        
+        /* 日志设置按钮 */
+        .info-btn {
+            background-color: #17a2b8;
+            color: white;
+        }
+        
+        .info-btn:hover {
+            background-color: #138496;
+        }
+        
+        /* 模态框样式 */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1001;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.4);
+        }
+        
+        .modal-content {
+            position: relative;
+            background-color: #ffffff;
+            margin: 10% auto;
+            padding: 0;
+            border-radius: 8px;
+            width: 500px;
+            max-width: 90%;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            animation: modalopen 0.4s;
+        }
+        
+        @keyframes modalopen {
+            from {opacity: 0; transform: translateY(-30px);}
+            to {opacity: 1; transform: translateY(0);}
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 20px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        .modal-header h3 {
+            margin: 0;
+            color: #333;
+        }
+        
+        .modal-body {
+            padding: 20px;
+        }
+        
+        .modal-footer {
+            padding: 15px 20px;
+            border-top: 1px solid #e0e0e0;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+        
+        .close {
+            color: #aaa;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        
+        .close:hover {
+            color: #555;
+        }
+        
+        /* 设置项样式 */
+        .settings-group {
+            margin-bottom: 20px;
+        }
+        
+        .setting-item {
+            margin-bottom: 15px;
+        }
+        
+        .setting-item label {
+            display: flex;
+            align-items: center;
+            font-weight: 500;
+            cursor: pointer;
+        }
+        
+        .setting-item input[type="checkbox"] {
+            margin-right: 10px;
+            width: 16px;
+            height: 16px;
+        }
+        
+        .setting-description {
+            margin-top: 5px;
+            margin-left: 26px;
+            color: #666;
+            font-size: 13px;
+        }
     </style>
 </head>
 <body>
@@ -132,6 +634,7 @@
             <div class="tab-header">
                 <button class="tab-button active" data-tab="pending-users">待审核用户</button>
                 <button class="tab-button" data-tab="approved-users">已审核用户</button>
+                <button class="tab-button" data-tab="system-logs">系统日志</button>
             </div>
             
             <div id="pending-users" class="tab-content active">
@@ -142,7 +645,7 @@
                             <th>ID</th>
                             <th>用户名</th>
                             <th>手机号</th>
-                            <th>邮箱</th>
+                            <th>单位</th>
                             <th>注册时间</th>
                             <th>操作</th>
                         </tr>
@@ -163,7 +666,8 @@
                             <th>ID</th>
                             <th>用户名</th>
                             <th>手机号</th>
-                            <th>邮箱</th>
+                            <th>单位</th>
+                            <th>注册时间</th>
                             <th>角色</th>
                             <th>状态</th>
                             <th>操作</th>
@@ -171,10 +675,72 @@
                     </thead>
                     <tbody id="approved-users-list">
                         <tr>
-                            <td colspan="7" class="loading-text">加载中...</td>
+                            <td colspan="8" class="loading-text">加载中...</td>
                         </tr>
                     </tbody>
                 </table>
+            </div>
+            
+            <div id="system-logs" class="tab-content">
+                <h2>系统日志</h2>
+                <div class="log-controls">
+                    <div class="log-filter-group">
+                        <div class="filter-row">
+                            <div class="filter-item">
+                                <label for="log-level">日志级别:</label>
+                                <select id="log-level" class="form-control">
+                                    <option value="all">全部</option>
+                                    <option value="INFO">INFO</option>
+                                    <option value="WARNING">WARNING</option>
+                                    <option value="ERROR">ERROR</option>
+                                </select>
+                            </div>
+                            <div class="filter-item">
+                                <label for="log-search">搜索:</label>
+                                <div class="search-wrapper">
+                                    <input type="text" id="log-search" placeholder="搜索日志...">
+                                    <button id="search-btn" class="btn primary-btn"><i class="fas fa-search"></i></button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="log-actions">
+                        <button id="refresh-logs-btn" class="btn primary-btn"><i class="fas fa-sync"></i> 刷新</button>
+                        <button id="export-logs-btn" class="btn secondary-btn"><i class="fas fa-download"></i> 导出CSV</button>
+                        <button id="cleanup-logs-btn" class="btn danger-btn"><i class="fas fa-trash-alt"></i> 清理日志</button>
+                    </div>
+                </div>
+                <div class="log-container">
+                    <table class="log-table">
+                        <thead>
+                            <tr>
+                                <th width="12%">时间</th>
+                                <th width="6%">级别</th>
+                                <th width="8%">来源</th>
+                                <th width="8%">用户</th>
+                                <th width="10%">IP地址</th>
+                                <th width="8%">请求ID</th>
+                                <th width="8%">方法</th>
+                                <th width="8%">状态码</th>
+                                <th width="8%">处理时间</th>
+                                <th>消息</th>
+                            </tr>
+                        </thead>
+                        <tbody id="logs-list">
+                            <tr>
+                                <td colspan="10" class="loading-text">正在加载日志数据...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="pagination">
+                    <button id="first-page" class="btn secondary-btn"><i class="fas fa-step-backward"></i> 首页</button>
+                    <button id="prev-page" class="btn secondary-btn" disabled><i class="fas fa-chevron-left"></i> 上一页</button>
+                    <span id="page-info">第 1 页</span>
+                    <button id="next-page" class="btn secondary-btn">下一页 <i class="fas fa-chevron-right"></i></button>
+                    <button id="last-page" class="btn secondary-btn">最后一页 <i class="fas fa-step-forward"></i></button>
+                </div>
+                <div class="last-updated">最后更新: <span id="last-update-time">--</span></div>
             </div>
         </div>
     </div>
@@ -211,8 +777,8 @@
                     return;
                 }
                 
-                // 是管理员，继续加载管理控制台
-                console.log('管理员用户访问管理控制台');
+                // 是管理员，继续使用管理控制台或刷新页面上的数据
+                console.log('用户登录状态已刷新');
                 
                 // 显示用户名
                 document.getElementById('username').textContent = username;
@@ -220,6 +786,9 @@
                 // 加载用户列表
                 loadPendingUsers();
                 loadApprovedUsers();
+                
+                // 初始化日志系统
+                initLogSystem();
             })
             .catch(error => {
                 console.error('验证管理员失败:', error);
@@ -286,13 +855,21 @@
                 tableBody.innerHTML = '';
                 users.forEach(user => {
                     const row = document.createElement('tr');
-                    const createdAt = new Date(user.created_at).toLocaleString();
+                    const createdAt = new Date(user.created_at).toLocaleString('zh-CN', {
+                        year: 'numeric',
+                        month: '2-digit',
+                        day: '2-digit',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        second: '2-digit',
+                        hour12: false
+                    });
                     
                     row.innerHTML = `
                         <td>${user.id}</td>
                         <td>${user.username}</td>
                         <td>${user.phone || '-'}</td>
-                        <td>${user.email || '-'}</td>
+                        <td>${user.company || '-'}</td>
                         <td>${createdAt}</td>
                         <td>
                             <button class="btn primary-btn approve-btn" data-id="${user.id}">审核通过</button>
@@ -340,7 +917,7 @@
                 const tableBody = document.getElementById('approved-users-list');
                 
                 if (!users || users.length === 0) {
-                    tableBody.innerHTML = '<tr><td colspan="7" class="no-data">暂无已审核用户</td></tr>';
+                    tableBody.innerHTML = '<tr><td colspan="8" class="no-data">暂无已审核用户</td></tr>';
                     return;
                 }
                 
@@ -348,7 +925,7 @@
                 const approvedUsers = users.filter(user => user.is_approved);
                 
                 if (approvedUsers.length === 0) {
-                    tableBody.innerHTML = '<tr><td colspan="7" class="no-data">暂无已审核用户</td></tr>';
+                    tableBody.innerHTML = '<tr><td colspan="8" class="no-data">暂无已审核用户</td></tr>';
                     return;
                 }
                 
@@ -357,12 +934,22 @@
                     const row = document.createElement('tr');
                     const statusClass = user.is_active ? 'badge-success' : 'badge-danger';
                     const statusText = user.is_active ? '正常' : '禁用';
+                    const createdAt = new Date(user.created_at).toLocaleString('zh-CN', {
+                        year: 'numeric',
+                        month: '2-digit',
+                        day: '2-digit',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        second: '2-digit',
+                        hour12: false
+                    });
                     
                     row.innerHTML = `
                         <td>${user.id}</td>
                         <td>${user.username}</td>
                         <td>${user.phone || '-'}</td>
-                        <td>${user.email || '-'}</td>
+                        <td>${user.company || '-'}</td>
+                        <td>${createdAt}</td>
                         <td>${user.is_admin ? '管理员' : '普通用户'}</td>
                         <td><span class="badge ${statusClass}">${statusText}</span></td>
                         <td>
@@ -386,7 +973,7 @@
             .catch(error => {
                 console.error('加载已审核用户失败:', error);
                 const tableBody = document.getElementById('approved-users-list');
-                tableBody.innerHTML = '<tr><td colspan="7" class="error-text">加载失败，请刷新页面重试</td></tr>';
+                tableBody.innerHTML = '<tr><td colspan="8" class="error-text">加载失败，请刷新页面重试</td></tr>';
             });
         }
         
@@ -551,6 +1138,487 @@
             .catch(error => {
                 console.error('删除用户失败:', error);
                 alert(`删除用户失败: ${error.message}`);
+            });
+        }
+        
+        // 初始化日志系统
+        function initLogSystem() {
+            // 设置日志查询参数
+            let logParams = {
+                page: 1,
+                limit: 50,
+                level: "all",
+                search: ""
+            };
+            
+            // 加载日志
+            loadLogs(logParams);
+            
+            // 添加日志级别过滤事件
+            document.getElementById('log-level').addEventListener('change', function() {
+                logParams.level = this.value;
+                logParams.page = 1; // 重置页码
+                loadLogs(logParams);
+            });
+            
+            // 添加日志搜索事件
+            document.getElementById('search-btn').addEventListener('click', function() {
+                const searchText = document.getElementById('log-search').value.trim();
+                logParams.search = searchText;
+                logParams.page = 1; // 重置页码
+                loadLogs(logParams);
+            });
+            
+            // 回车键搜索
+            document.getElementById('log-search').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    const searchText = this.value.trim();
+                    logParams.search = searchText;
+                    logParams.page = 1; // 重置页码
+                    loadLogs(logParams);
+                }
+            });
+            
+            // 添加刷新按钮事件
+            document.getElementById('refresh-logs-btn').addEventListener('click', function() {
+                loadLogs(logParams);
+            });
+            
+            // 添加导出按钮事件
+            document.getElementById('export-logs-btn').addEventListener('click', function() {
+                exportLogs();
+            });
+            
+            // 添加清理日志按钮事件
+            document.getElementById('cleanup-logs-btn').addEventListener('click', function() {
+                cleanupLogs();
+            });
+            
+            // 添加首页按钮事件
+            document.getElementById('first-page').addEventListener('click', function() {
+                logParams.page = 1;
+                loadLogs(logParams);
+            });
+            
+            // 添加分页事件
+            document.getElementById('prev-page').addEventListener('click', function() {
+                if (logParams.page > 1) {
+                    logParams.page--;
+                    loadLogs(logParams);
+                }
+            });
+
+            document.getElementById('next-page').addEventListener('click', function() {
+                logParams.page++;
+                loadLogs(logParams);
+            });
+
+            // 添加最后一页按钮事件
+            document.getElementById('last-page').addEventListener('click', function() {
+                // 从页码信息中获取总页数
+                const pageInfo = document.getElementById('page-info').textContent;
+                const match = pageInfo.match(/共 (\d+) 页/);
+                if (match && match[1]) {
+                    const totalPages = parseInt(match[1]);
+                    if (totalPages > 0) {
+                        logParams.page = totalPages;
+                        loadLogs(logParams);
+                    }
+                }
+            });
+        }
+        
+        // 生成请求ID
+        function generateRequestId() {
+            return 'req_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        }
+        
+        // 统一的日志加载函数
+        function loadLogs(params) {
+            const token = localStorage.getItem('token');
+            
+            // 构建查询参数
+            const queryParams = new URLSearchParams({
+                page: params.page,
+                limit: params.limit
+            });
+            
+            if (params.level !== 'all') {
+                queryParams.append('level', params.level);
+            }
+            
+            if (params.search) {
+                queryParams.append('search', params.search);
+            }
+            
+            // 显示加载中
+            const logsTable = document.getElementById('logs-list');
+            logsTable.innerHTML = '<tr><td colspan="10" class="loading-text">正在加载日志数据...</td></tr>';
+            
+            // 更新页码信息
+            document.getElementById('page-info').textContent = `第 ${params.page} 页`;
+            
+            // 禁用上一页按钮（如果在第一页）
+            document.getElementById('prev-page').disabled = params.page <= 1;
+            
+            fetch(`/api/logs?${queryParams.toString()}`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                    'Cache-Control': 'no-cache, no-store, must-revalidate',
+                    'Pragma': 'no-cache',
+                    'Expires': '0'
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    if (response.status === 403) {
+                        throw new Error('没有权限查看日志');
+                    }
+                    throw new Error('加载日志失败');
+                }
+                return response.json();
+            })
+            .then(data => {
+                renderLogData(data, logsTable);
+            })
+            .catch(error => {
+                console.error('加载日志失败:', error);
+                logsTable.innerHTML = `<tr><td colspan="10" class="error-text">加载失败: ${error.message}</td></tr>`;
+            });
+        }
+        
+        // 通用的日志数据渲染函数
+        function renderLogData(data, logsTable) {
+            const logs = data.logs;
+            const totalPages = data.total_pages;
+            const totalRecords = data.total;
+            
+            // 禁用下一页按钮（如果已是最后一页）
+            document.getElementById('next-page').disabled = data.page >= totalPages;
+            
+            // 更新页码显示
+            document.getElementById('page-info').textContent = `第 ${data.page} 页 / 共 ${totalPages} 页 (${totalRecords} 条记录)`;
+            
+            // 更新最后刷新时间
+            const now = new Date();
+            document.getElementById('last-update-time').textContent = now.toLocaleString('zh-CN', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false
+            });
+            
+            // 没有日志数据
+            if (!logs || logs.length === 0) {
+                logsTable.innerHTML = '<tr><td colspan="10" class="no-data">暂无符合条件的日志数据</td></tr>';
+                return;
+            }
+            
+            // 渲染日志数据
+            logsTable.innerHTML = '';
+            logs.forEach(log => {
+                const row = document.createElement('tr');
+                // 直接使用数据库中的时间
+                const logTime = new Date(log.timestamp);
+                const formattedTime = logTime.toLocaleString('zh-CN', {
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit',
+                    hour12: false
+                });
+                
+                // 格式化处理时间
+                const processTime = log.process_time ? `${log.process_time.toFixed(4)}s` : '-';
+                
+                // 根据状态码设置样式
+                let statusCodeClass = '';
+                if (log.status_code) {
+                    if (log.status_code < 300) {
+                        statusCodeClass = 'text-success';
+                    } else if (log.status_code < 400) {
+                        statusCodeClass = 'text-warning';
+                    } else {
+                        statusCodeClass = 'text-danger';
+                    }
+                }
+                
+                // 根据日志来源显示不同的内容
+                const isApiLog = log.source === 'API';
+                
+                // 获取用户信息
+                const username = log.username || '-';
+                const userId = log.user_id || '-';
+                
+                row.innerHTML = `
+                    <td class="log-timestamp">${formattedTime}</td>
+                    <td><span class="${statusCodeClass}">${log.level || '-'}</span></td>
+                    <td class="log-source">${log.source || '-'}</td>
+                    <td>${username}${userId !== '-' ? ` (${userId})` : ''}</td>
+                    <td class="log-ip">${log.ip_address || '-'}</td>
+                    <td class="log-request-id">${isApiLog ? (log.request_id || '-') : '-'}</td>
+                    <td class="log-method">${isApiLog ? (log.request_method || '-') : '-'}</td>
+                    <td class="log-status">${isApiLog ? `<span class="${statusCodeClass}">${log.status_code || '-'}</span>` : '-'}</td>
+                    <td class="log-time">${isApiLog ? processTime : '-'}</td>
+                    <td class="log-message">${log.message || '-'}</td>
+                `;
+                
+                // 根据日志级别设置行样式
+                switch(log.level) {
+                    case 'ERROR':
+                        row.classList.add('table-danger');
+                        break;
+                    case 'WARNING':
+                        row.classList.add('table-warning');
+                        break;
+                    case 'INFO':
+                        row.classList.add('table-info');
+                        break;
+                }
+                
+                logsTable.appendChild(row);
+            });
+        }
+        
+        // 显示消息
+        function showMessage(message, type = 'info') {
+            showNotification(type, message);
+        }
+        
+        // 导出日志
+        async function exportLogs() {
+            try {
+                const level = document.getElementById('log-level').value;
+                const search = document.getElementById('log-search').value;
+                
+                // 构建查询参数
+                const params = new URLSearchParams();
+                if (level && level !== 'all') {
+                    params.append('level', level);
+                }
+                if (search) {
+                    params.append('search', search);
+                }
+                
+                // 构建请求URL
+                const requestUrl = `/api/logs/export?${params.toString()}`;
+                
+                // 获取认证token
+                const token = localStorage.getItem('token');
+                if (!token) {
+                    throw new Error('未登录');
+                }
+                
+                // 发送导出请求
+                const response = await fetch(requestUrl, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'X-Request-ID': generateRequestId()
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`导出失败: ${response.status}`);
+                }
+                
+                // 获取文件名
+                const contentDisposition = response.headers.get('content-disposition');
+                let filename = 'logs_export.csv';
+                if (contentDisposition) {
+                    const matches = /filename="(.+)"/.exec(contentDisposition);
+                    if (matches) {
+                        filename = matches[1];
+                    }
+                }
+                
+                // 下载文件
+                const blob = await response.blob();
+                const downloadUrl = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = downloadUrl;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(downloadUrl);
+                document.body.removeChild(a);
+                
+                // 只显示一次成功提示
+                showNotification('success', '日志导出成功', 3000, 'export-success');
+            } catch (error) {
+                console.error('导出日志失败:', error);
+                showNotification('error', `导出日志失败: ${error.message}`, 3000, 'export-notification');
+            }
+        }
+        
+        // 清理旧日志
+        function cleanupLogs(confirmDays) {
+            // 如果没有提供天数，使用确认对话框
+            if (!confirmDays) {
+                const days = prompt('请输入要清理多少天前的日志（默认30天）:', '30');
+                if (days === null) {
+                    return; // 用户取消
+                }
+                // 特殊处理用户输入为"0"的情况
+                confirmDays = days === '0' ? 0 : (parseInt(days, 10) || 30);
+            }
+            
+            // 不允许清理当天日志
+            if (confirmDays === 0) {
+                showNotification('warning', '系统不支持清理当天的日志', 3000, 'cleanup-notification');
+                return;
+            }
+            
+            // 检查token
+            const token = localStorage.getItem('token');
+            if (!token) {
+                showNotification('error', '您需要登录才能执行此操作');
+                return;
+            }
+            
+            // 确认操作
+            const confirmMsg = `您确定要删除${confirmDays}天前的系统日志吗？\n此操作不可撤销！`;
+            
+            if (!confirm(confirmMsg)) {
+                return;
+            }
+            
+            // 构建请求参数
+            const data = {
+                days: Math.max(confirmDays, 1)
+            };
+            
+            // 发送POST请求清理日志
+            fetch('/api/logs/cleanup_post', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`,
+                    'X-Request-ID': generateRequestId()
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                // 显示成功信息
+                showNotification('success', `成功删除了 ${data.deleted} 条${confirmDays}天前的系统日志`, 3000, 'cleanup-success');
+                
+                // 刷新日志列表
+                loadLogs({
+                    page: 1,
+                    limit: 50,
+                    level: "all",
+                    search: ""
+                });
+            })
+            .catch(error => {
+                console.error('清理日志失败:', error);
+                showNotification('error', `清理日志失败: ${error.message}`, 3000, 'cleanup-notification');
+            });
+        }
+
+        // 显示通知
+        function showNotification(type, message, duration = 3000, category = '') {
+            // 创建通知元素
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}-notification${category ? ' ' + category : ''}`;
+            
+            // 根据类型设置图标
+            let icon = '';
+            switch(type) {
+                case 'success':
+                    icon = '<i class="fas fa-check-circle"></i>';
+                    break;
+                case 'error':
+                    icon = '<i class="fas fa-exclamation-circle"></i>';
+                    break;
+                case 'warning':
+                    icon = '<i class="fas fa-exclamation-triangle"></i>';
+                    break;
+                case 'info':
+                default:
+                    icon = '<i class="fas fa-info-circle"></i>';
+                    break;
+            }
+            
+            notification.innerHTML = `${icon} ${message}`;
+            document.body.appendChild(notification);
+            
+            // 一段时间后移除通知
+            setTimeout(() => {
+                notification.classList.add('fadeOut');
+                setTimeout(() => {
+                    if (document.body.contains(notification)) {
+                        document.body.removeChild(notification);
+                    }
+                }, 500);
+            }, duration);
+            
+            return notification;
+        }
+
+        // 在DOM加载完成后初始化用户验证
+        document.addEventListener('DOMContentLoaded', function() {
+            // 检查用户登录状态
+            checkUserLoggedIn();
+            
+            // 设置定时检查登录状态，每15分钟检查一次
+            setInterval(checkUserLoggedIn, 15 * 60 * 1000);
+        });
+
+        // 检查用户登录状态，在令牌过期时刷新页面
+        function checkUserLoggedIn() {
+            const token = localStorage.getItem('token');
+            
+            if (!token) {
+                window.location.href = '/login';
+                return;
+            }
+            
+            // 检查用户是否是管理员
+            fetch('/api/users/me', {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('会话已过期');
+                }
+                return response.json();
+            })
+            .then(userData => {
+                // 如果不是管理员，重定向到主页
+                if (!userData.is_admin) {
+                    console.log('非管理员用户尝试访问管理控制台，重定向到主页');
+                    window.location.href = '/index';
+                    return;
+                }
+                
+                // 是管理员，继续使用管理控制台或刷新页面上的数据
+                console.log('用户登录状态已刷新');
+            })
+            .catch(error => {
+                console.error('认证失败:', error);
+                showNotification('error', '会话已过期，请重新登录');
+                setTimeout(() => {
+                    // 清除旧令牌并重定向到登录页
+                    localStorage.removeItem('token');
+                    localStorage.removeItem('username');
+                    window.location.href = '/login';
+                }, 1500);
             });
         }
     </script>

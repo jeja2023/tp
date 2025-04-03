@@ -1,2 +1,25 @@
 *.py text encoding=utf-8
 *.html text encoding=utf-8
+
+# 设置默认行为，以防人们没有设置core.autocrlf
+* text=auto
+
+# 明确声明应该规范化的文本文件
+*.py text
+*.js text
+*.html text
+*.css text
+*.md text
+*.txt text
+*.ini text
+*.json text
+*.yml text
+*.yaml text
+*.mako text
+
+# 声明二进制文件（这些文件不应该被修改）
+*.png binary
+*.jpg binary
+*.gif binary
+*.ico binary
+*.pdf binary

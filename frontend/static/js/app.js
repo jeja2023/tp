@@ -452,88 +452,51 @@ function showTaskDetailSection(task) {
 }
 
 // 加载用户任务
-function loadTasks() {
-    const token = localStorage.getItem('token');
-    const taskList = document.getElementById('task-list');
-    
-    if (!token) {
-        console.error('No token found, redirecting to login');
-        setTimeout(() => {
-            window.location.href = 'login.html';
-        }, 1000);
-        return;
-    }
-    
-    // 显示加载消息
-    taskList.innerHTML = '<tr><td colspan="4" class="loading">加载中...</td></tr>';
-    
-    fetch(apiUrl('/tasks/'), {
-        method: 'GET',
-        headers: {
-            'Authorization': `Bearer ${token}`
-        }
-    })
-    .then(response => {
-        if (response.ok) {
-            return response.json();
-        } else {
-            throw new Error('Failed to load tasks');
-        }
-    })
-    .then(tasks => {
-        // 更新任务列表
-        taskList.innerHTML = '';
-        
-        if (tasks.length === 0) {
-            taskList.innerHTML = '<p>您还没有任务，请创建新任务</p>';
-            return;
-        }
-        
-        tasks.forEach(task => {
-            const taskItem = document.createElement('div');
-            taskItem.className = 'task-card';
-            taskItem.innerHTML = `
-                <h3>${task.title}</h3>
-                <p>${task.description || '无描述'}</p>
-                <p>创建时间: ${new Date(task.created_at).toLocaleString()}</p>
-                <button class="view-task-btn" data-id="${task.id}">进入任务</button>
-            `;
-            taskList.appendChild(taskItem);
-            
-            // 添加查看任务按钮事件
-            const viewBtn = taskItem.querySelector('.view-task-btn');
-            if (viewBtn) {
-                viewBtn.addEventListener('click', function() {
-                    const taskId = parseInt(this.getAttribute('data-id'));
-                    
-                    // 获取完整任务信息
-                    fetch(apiUrl(`/tasks/${taskId}`), {
-                        method: 'GET',
-                        headers: {
-                            'Authorization': `Bearer ${token}`
-                        }
-                    })
-                    .then(response => {
-                        if (response.ok) {
-                            return response.json();
-                        } else {
-                            throw new Error('Failed to load task details');
-                        }
-                    })
-                    .then(taskDetails => {
-                        showTaskDetailSection(taskDetails);
-                    })
-                    .catch(error => {
-                        console.error('Load task details error:', error);
-                        alert('获取任务详情失败');
-                    });
-                });
+async function loadTasks() {
+    try {
+        const response = await fetch('/api/tasks', {
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
             }
         });
-    })
-    .catch(error => {
-        console.error('Load tasks error:', error);
-    });
+        
+        if (!response.ok) {
+            throw new Error('加载任务失败');
+        }
+        
+        const tasks = await response.json();
+        const taskList = document.getElementById('task-list');
+        taskList.innerHTML = '';
+        
+        tasks.forEach(task => {
+            const taskElement = document.createElement('div');
+            taskElement.className = 'task-item';
+            
+            // 直接使用数据库中的时间
+            const createdAt = new Date(task.created_at);
+            const formattedDate = createdAt.toLocaleString('zh-CN', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false
+            });
+            
+            taskElement.innerHTML = `
+                <h3>${task.title}</h3>
+                <p>${task.description || '无描述'}</p>
+                <p>创建时间：${formattedDate}</p>
+                <p>创建者：${task.owner ? task.owner.username : '未知'}</p>
+            `;
+            
+            taskList.appendChild(taskElement);
+        });
+    } catch (error) {
+        console.error('加载任务失败:', error);
+        alert('加载任务失败，请稍后重试');
+    }
 }
 
 // 创建新任务

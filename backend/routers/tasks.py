@@ -2,8 +2,10 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List
 from ..models import models, schemas
-from ..db import crud, get_db
+from ..db import get_db
 from ..api import get_current_user
+from ..crud import task as crud_task
+from ..utils.logger import setup_logger
 
 router = APIRouter(
     prefix="/tasks",
@@ -14,17 +16,25 @@ router = APIRouter(
 # 创建任务
 @router.post("/", response_model=schemas.Task)
 def create_task(task: schemas.TaskCreate, current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
-    return crud.create_task(db=db, task=task, user_id=current_user.id)
+    task.user_id = current_user.id
+    return crud_task.create_task(db=db, task=task)
 
 # 获取用户的所有任务
 @router.get("/", response_model=List[schemas.Task])
 def get_user_tasks(current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
-    return crud.get_tasks_by_user(db=db, user_id=current_user.id)
+    try:
+        tasks = crud_task.get_tasks_by_user(db=db, user_id=current_user.id)
+        return tasks
+    except Exception as e:
+        # 记录错误并返回友好的错误信息
+        logger = setup_logger("tasks_router")
+        logger.error(f"获取用户任务失败: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="获取任务列表时发生错误，请稍后再试")
 
 # 获取单个任务
 @router.get("/{task_id}", response_model=schemas.Task)
 def get_task(task_id: int, current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
-    task = crud.get_task(db=db, task_id=task_id)
+    task = crud_task.get_task(db=db, task_id=task_id)
     if not task:
         raise HTTPException(status_code=404, detail="任务不存在")
     return task
@@ -38,19 +48,23 @@ def update_task(
     db: Session = Depends(get_db)
 ):
     # 检查任务是否存在
-    task = crud.get_task(db=db, task_id=task_id)
+    task = crud_task.get_task(db=db, task_id=task_id)
     if not task:
         raise HTTPException(status_code=404, detail="任务不存在")
     
     # 检查是否有权限更新任务
     if task.owner_id != current_user.id:
         # 检查是否有编辑权限
-        permission = crud.get_user_task_permission(db=db, task_id=task_id, user_id=current_user.id)
+        permission = crud_task.get_user_task_permission(db=db, task_id=task_id, user_id=current_user.id)
         if not permission or permission.permission_type not in ["edit", "admin"]:
             raise HTTPException(status_code=403, detail="没有权限编辑此任务")
     
     # 更新任务
-    return crud.update_task(db=db, task_id=task_id, task_update=task_update)
+    try:
+        updated_task = crud_task.update_task(db=db, task_id=task_id, task=task_update)
+        return updated_task
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 # 授权任务权限
 @router.post("/{task_id}/permissions/", response_model=schemas.TaskPermission)
@@ -60,18 +74,18 @@ def create_task_permission(
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    task = crud.get_task(db=db, task_id=task_id)
+    task = crud_task.get_task(db=db, task_id=task_id)
     if not task:
         raise HTTPException(status_code=404, detail="任务不存在")
     
     # 检查权限：任务创建者或有管理员权限的用户可以分享任务
     if task.owner_id != current_user.id:
         # 检查当前用户是否有管理员权限
-        user_permission = crud.get_user_task_permission(db=db, task_id=task_id, user_id=current_user.id)
+        user_permission = crud_task.get_user_task_permission(db=db, task_id=task_id, user_id=current_user.id)
         if not user_permission or not user_permission.can_manage:
             raise HTTPException(status_code=403, detail="只有任务创建者或管理员可以授权权限")
     
-    return crud.create_task_permission(db=db, permission=permission, task_id=task_id, shared_by_id=current_user.id)
+    return crud_task.create_task_permission(db=db, permission=permission, task_id=task_id, shared_by_id=current_user.id)
 
 # 删除任务权限（取消分享）
 @router.delete("/{task_id}/permissions/{username}", response_model=dict)
@@ -81,12 +95,12 @@ def delete_task_permission(
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    task = crud.get_task(db=db, task_id=task_id)
+    task = crud_task.get_task(db=db, task_id=task_id)
     if not task:
         raise HTTPException(status_code=404, detail="任务不存在")
     
     # 获取要删除权限的用户
-    target_user = crud.get_user_by_username(db=db, username=username)
+    target_user = crud_task.get_user_by_username(db=db, username=username)
     if not target_user:
         raise HTTPException(status_code=404, detail="用户不存在")
     
@@ -101,12 +115,12 @@ def delete_task_permission(
         pass
     else:
         # 非创建者，检查是否有管理员权限
-        user_permission = crud.get_user_task_permission(db=db, task_id=task_id, user_id=current_user.id)
+        user_permission = crud_task.get_user_task_permission(db=db, task_id=task_id, user_id=current_user.id)
         if not user_permission or not user_permission.can_manage:
             raise HTTPException(status_code=403, detail="没有权限管理任务分享")
         
         # 获取要删除的权限记录
-        target_permission = crud.get_user_task_permission(db=db, task_id=task_id, user_id=target_user.id)
+        target_permission = crud_task.get_user_task_permission(db=db, task_id=task_id, user_id=target_user.id)
         if not target_permission:
             raise HTTPException(status_code=404, detail="未找到该用户的权限记录")
         
@@ -115,7 +129,7 @@ def delete_task_permission(
             raise HTTPException(status_code=403, detail="非任务创建者不能取消非自己分享的授权记录")
     
     # 删除权限
-    result = crud.delete_task_permission(db=db, task_id=task_id, user_id=target_user.id)
+    result = crud_task.delete_task_permission(db=db, task_id=task_id, user_id=target_user.id)
     if not result:
         raise HTTPException(status_code=404, detail="未找到该用户的权限记录")
     
@@ -129,20 +143,20 @@ def get_task_images(
     db: Session = Depends(get_db)
 ):
     # 检查权限
-    task = crud.get_task(db=db, task_id=task_id)
+    task = crud_task.get_task(db=db, task_id=task_id)
     if not task:
         raise HTTPException(status_code=404, detail="任务不存在")
     
     # 系统管理员可以访问任何任务的图片
     if current_user.is_admin:
-        return crud.get_images_by_task(db=db, task_id=task_id)
+        return crud_task.get_images_by_task(db=db, task_id=task_id)
     
     # 检查用户是否有权限访问该任务
-    permission = crud.get_user_task_permission(db=db, task_id=task_id, user_id=current_user.id)
+    permission = crud_task.get_user_task_permission(db=db, task_id=task_id, user_id=current_user.id)
     if not (task.owner_id == current_user.id or permission):
         raise HTTPException(status_code=403, detail="没有权限访问此任务的图片")
     
-    return crud.get_images_by_task(db=db, task_id=task_id)
+    return crud_task.get_images_by_task(db=db, task_id=task_id)
 
 # 获取用户对任务的权限信息
 @router.get("/{task_id}/user-permission", response_model=dict)
@@ -152,7 +166,7 @@ def get_user_task_permission_info(
     db: Session = Depends(get_db)
 ):
     # 检查任务是否存在
-    task = crud.get_task(db=db, task_id=task_id)
+    task = crud_task.get_task(db=db, task_id=task_id)
     if not task:
         raise HTTPException(status_code=404, detail="任务不存在")
     
@@ -172,7 +186,7 @@ def get_user_task_permission_info(
         }
     
     # 获取用户权限
-    permission = crud.get_user_task_permission(db=db, task_id=task_id, user_id=current_user.id)
+    permission = crud_task.get_user_task_permission(db=db, task_id=task_id, user_id=current_user.id)
     if not permission:
         raise HTTPException(status_code=403, detail="没有权限访问此任务")
     
@@ -195,7 +209,7 @@ def delete_task(
     db: Session = Depends(get_db)
 ):
     # 检查任务是否存在
-    task = crud.get_task(db=db, task_id=task_id)
+    task = crud_task.get_task(db=db, task_id=task_id)
     if not task:
         raise HTTPException(status_code=404, detail="任务不存在")
     
@@ -204,7 +218,7 @@ def delete_task(
         raise HTTPException(status_code=403, detail="只有任务创建者可以删除任务")
     
     # 删除任务及其所有相关数据
-    result = crud.delete_task(db=db, task_id=task_id)
+    result = crud_task.delete_task(db=db, task_id=task_id)
     if not result:
         raise HTTPException(status_code=500, detail="删除任务失败")
     
@@ -218,14 +232,14 @@ def get_task_permissions(
     db: Session = Depends(get_db)
 ):
     # 检查任务是否存在
-    task = crud.get_task(db=db, task_id=task_id)
+    task = crud_task.get_task(db=db, task_id=task_id)
     if not task:
         raise HTTPException(status_code=404, detail="任务不存在")
     
     # 检查权限：任务创建者或有管理员权限的用户可以查看权限列表
     is_owner = task.owner_id == current_user.id
     if not is_owner:
-        user_permission = crud.get_user_task_permission(db=db, task_id=task_id, user_id=current_user.id)
+        user_permission = crud_task.get_user_task_permission(db=db, task_id=task_id, user_id=current_user.id)
         if not user_permission or not user_permission.can_manage:
             raise HTTPException(status_code=403, detail="只有任务创建者或管理员可以查看权限列表")
     

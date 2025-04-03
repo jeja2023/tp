@@ -19,22 +19,26 @@ def get_now_shanghai():
 Base = declarative_base()
 
 class User(Base):
-    """User model for authentication"""
+    """User model for authentication and authorization"""
     __tablename__ = "users"
     
     id = Column(Integer, primary_key=True, index=True)
-    username = Column(String(50), unique=True, index=True)
-    hashed_password = Column(String(255))
+    username = Column(String(50), unique=True, index=True, nullable=False)
+    password = Column(String(255), nullable=False)
     company = Column(String(100), nullable=False)
-    phone = Column(String(20), unique=True, index=True, nullable=False)
+    phone = Column(String(20), nullable=False)
+    is_admin = Column(Boolean, default=False)
     is_active = Column(Boolean, default=True)
     is_approved = Column(Boolean, default=False)
-    is_admin = Column(Boolean, default=False)
-    created_at = Column(DateTime, default=get_now_shanghai)
+    created_at = Column(DateTime(timezone=True), default=get_now_shanghai)
+    updated_at = Column(DateTime(timezone=True), default=get_now_shanghai, onupdate=get_now_shanghai)
     
+    # 关联
     tasks = relationship("Task", back_populates="owner")
-    task_permissions = relationship("TaskPermission", back_populates="user", foreign_keys="TaskPermission.user_id")
-    shared_permissions = relationship("TaskPermission", foreign_keys="TaskPermission.shared_by_id", overlaps="task_permissions")
+    images = relationship("Image", back_populates="user")
+    logs = relationship("SystemLog", back_populates="user")
+    task_permissions = relationship("TaskPermission", foreign_keys="[TaskPermission.user_id]")
+    shared_tasks = relationship("TaskPermission", foreign_keys="[TaskPermission.shared_by_id]")
 
 class Task(Base):
     """Task model for organizing images"""
@@ -43,7 +47,7 @@ class Task(Base):
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String(100))
     description = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=get_now_shanghai)
+    created_at = Column(DateTime(timezone=True), default=get_now_shanghai)
     owner_id = Column(Integer, ForeignKey("users.id"))
     
     owner = relationship("User", back_populates="tasks")
@@ -65,7 +69,7 @@ class TaskPermission(Base):
     
     task = relationship("Task", back_populates="permissions")
     user = relationship("User", back_populates="task_permissions", foreign_keys=[user_id])
-    shared_by = relationship("User", foreign_keys=[shared_by_id], overlaps="shared_permissions")
+    shared_by = relationship("User", back_populates="shared_tasks", foreign_keys=[shared_by_id])
 
 class Image(Base):
     """Image model for storing image metadata"""
@@ -74,18 +78,20 @@ class Image(Base):
     id = Column(Integer, primary_key=True, index=True)
     task_id = Column(Integer, ForeignKey("tasks.id"))
     file_path = Column(String(255))
-    time = Column(DateTime, nullable=False)
+    time = Column(DateTime(timezone=True), nullable=False)
     location = Column(String(255), nullable=False)
     description = Column(Text, nullable=True)
     gps_latitude = Column(Float, nullable=True)
     gps_longitude = Column(Float, nullable=True)
     transportation = Column(String(50), nullable=False)
     sequence_number = Column(Integer)
-    created_at = Column(DateTime, default=get_now_shanghai)
-    updated_at = Column(DateTime, default=get_now_shanghai, onupdate=get_now_shanghai)
+    created_at = Column(DateTime(timezone=True), default=get_now_shanghai)
+    updated_at = Column(DateTime(timezone=True), default=get_now_shanghai, onupdate=get_now_shanghai)
     created_by = Column(String(50), nullable=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
     
     task = relationship("Task", back_populates="images")
+    user = relationship("User", back_populates="images")
     people_involved = relationship("PersonInvolved", back_populates="image")
 
 class PersonInvolved(Base):
@@ -98,4 +104,24 @@ class PersonInvolved(Base):
     id_number = Column(String(18))
     household_registration = Column(String(255))
     
-    image = relationship("Image", back_populates="people_involved") 
+    image = relationship("Image", back_populates="people_involved")
+
+class SystemLog(Base):
+    """System log model for tracking system activities"""
+    __tablename__ = "system_logs"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    timestamp = Column(DateTime(timezone=True), default=get_now_shanghai)  # 使用东八区时间
+    level = Column(String(20), nullable=False)  # INFO, WARNING, ERROR, etc.
+    message = Column(Text, nullable=False)
+    source = Column(String(100), nullable=True)  # 来源模块或功能
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    username = Column(String(50), nullable=True)  # 用户名
+    ip_address = Column(String(50), nullable=True)
+    request_id = Column(String(50), nullable=True)  # 请求ID
+    request_path = Column(String(255), nullable=True)  # 请求路径
+    request_method = Column(String(10), nullable=True)  # 请求方法
+    status_code = Column(Integer, nullable=True)  # 响应状态码
+    process_time = Column(Float, nullable=True)  # 处理时间（秒）
+    
+    user = relationship("User", back_populates="logs") 

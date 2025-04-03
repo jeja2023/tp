@@ -9,7 +9,6 @@
     <link rel="stylesheet" href="/static/css/styles.css?v=1.0.2">
     <!-- 添加Font Awesome图标库 -->
     <link rel="stylesheet" href="/static/css/all.min.css">
-    <!-- 高德地图API配置 -->
     <style>
         .back-home-btn {
             padding: 6px 12px;
@@ -118,8 +117,8 @@
                     <div class="form-group">
                         <label for="gps-coordinates">GPS坐标 (选填)</label>
                         <div class="gps-inputs">
-                            <input type="text" id="gps-latitude" name="gps_latitude" placeholder="纬度">
                             <input type="text" id="gps-longitude" name="gps_longitude" placeholder="经度">
+                            <input type="text" id="gps-latitude" name="gps_latitude" placeholder="纬度">
                         </div>
                     </div>
                     
@@ -284,7 +283,6 @@
     </template>
 
     <!-- JavaScript -->
-    <script src="/static/js/map.js?v=1.0.2"></script>
     <script src="/static/js/task-manager.js?v=1.0.2"></script>
     <script>
         // 页面加载时获取用户名
