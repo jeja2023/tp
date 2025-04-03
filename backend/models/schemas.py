@@ -88,7 +88,6 @@ class ImageBase(BaseModel):
     gps_latitude: Optional[float] = None
     gps_longitude: Optional[float] = None
     transportation: str
-    sequence_number: Optional[int] = None
     created_by: Optional[str] = None
 
 class ImageCreate(ImageBase):
@@ -103,7 +102,6 @@ class ImageUpdate(BaseModel):
     gps_latitude: Optional[float] = None
     gps_longitude: Optional[float] = None
     transportation: Optional[str] = None
-    sequence_number: Optional[int] = None
     created_by: Optional[str] = None
     people_involved: Optional[List[PersonInvolvedCreate]] = None
 

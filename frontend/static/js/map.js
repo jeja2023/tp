@@ -150,7 +150,7 @@ function showGpsImportDialog() {
                 
                 <div id="excel-input-container" style="display: none;">
                     <p>请上传Excel文件，文件须包含以下字段：<br>
-                    <span style="color: red;">经度、纬度</span>(必填)，时间、地点(可选)</p>
+                    <span style="color: red;">经度、纬度</span>(必填)，时间(格式：2023-03-22 14:30:00)、地点(可选)</p>
                     
                     <div style="margin: 15px 0;">
                         <input type="file" id="excel-file-input" accept=".xlsx, .xls" style="border: 1px solid #ddd; padding: 8px; width: 100%; border-radius: 4px;">

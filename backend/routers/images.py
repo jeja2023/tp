@@ -116,7 +116,6 @@ async def upload_image(
         "transportation": transportation,
         "gps_latitude": float(gps_latitude) if gps_latitude else None,
         "gps_longitude": float(gps_longitude) if gps_longitude else None,
-        "sequence_number": None,  # 可选字段，设为None
         "created_by": current_user.username,
         "people_involved": people_list
     }
@@ -150,23 +149,39 @@ def get_image(
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    # 获取图片信息
-    image = crud_image.get_image(db=db, image_id=image_id)
-    if not image:
-        raise HTTPException(status_code=404, detail="图片不存在")
+    logger = setup_logger("images_router")
+    logger.info(f"开始处理获取图片请求，图片ID: {image_id}, 用户ID: {current_user.id}")
     
-    # 检查任务是否存在
-    task = crud_task.get_task(db=db, task_id=image.task_id)
-    if not task:
-        raise HTTPException(status_code=404, detail="任务不存在")
-    
-    # 检查用户是否有权限访问图片
-    if task.owner_id != current_user.id:
-        permission = crud_task.get_user_task_permission(db=db, task_id=image.task_id, user_id=current_user.id)
-        if not permission or not permission.can_view:
-            raise HTTPException(status_code=403, detail="没有查看权限")
-    
-    return image
+    try:
+        # 获取图片信息
+        image = crud_image.get_image(db=db, image_id=image_id)
+        if not image:
+            logger.warning(f"图片不存在，ID: {image_id}")
+            raise HTTPException(status_code=404, detail="图片不存在")
+        
+        logger.info(f"找到图片，任务ID: {image.task_id}")
+        # 检查任务是否存在
+        task = crud_task.get_task(db=db, task_id=image.task_id)
+        if not task:
+            logger.warning(f"图片关联的任务不存在，任务ID: {image.task_id}")
+            raise HTTPException(status_code=404, detail="任务不存在")
+        
+        logger.info(f"检查用户权限，用户ID: {current_user.id}, 任务所有者ID: {task.owner_id}")
+        # 检查用户是否有权限访问图片
+        if task.owner_id != current_user.id:
+            permission = crud_task.get_user_task_permission(db=db, task_id=image.task_id, user_id=current_user.id)
+            if not permission or permission.permission_type not in ['view', 'edit', 'admin']:
+                logger.warning(f"用户没有查看权限，用户ID: {current_user.id}, 任务ID: {image.task_id}")
+                raise HTTPException(status_code=403, detail="没有查看权限")
+        
+        logger.info(f"成功返回图片信息，图片ID: {image_id}")
+        return image
+    except HTTPException as e:
+        logger.error(f"HTTP异常: {str(e)}")
+        raise e
+    except Exception as e:
+        logger.error(f"获取图片时发生错误: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"获取图片失败: {str(e)}")
 
 # 更新图片信息
 @router.put("/{image_id}", response_model=schemas.Image)
@@ -269,28 +284,89 @@ def delete_image(
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    # 获取图片信息
-    image = crud_image.get_image(db=db, image_id=image_id)
-    if not image:
-        raise HTTPException(status_code=404, detail="图片不存在")
+    logger = setup_logger("images_router")
+    logger.info(f"开始处理删除图片请求，图片ID: {image_id}, 用户ID: {current_user.id}")
     
-    # 检查任务是否存在
-    task = crud_task.get_task(db=db, task_id=image.task_id)
-    if not task:
-        raise HTTPException(status_code=404, detail="任务不存在")
-    
-    # 检查用户是否有权限删除图片
-    if task.owner_id != current_user.id:
-        permission = crud_task.get_user_task_permission(db=db, task_id=image.task_id, user_id=current_user.id)
-        if not permission or not permission.can_delete:
-            raise HTTPException(status_code=403, detail="没有删除权限")
-    
-    # 删除文件
     try:
-        if os.path.exists(image.file_path):
-            os.remove(image.file_path)
+        # 获取图片信息
+        image = crud_image.get_image(db=db, image_id=image_id)
+        if not image:
+            logger.warning(f"图片不存在，ID: {image_id}")
+            raise HTTPException(status_code=404, detail="图片不存在")
+        
+        logger.info(f"找到图片记录，任务ID: {image.task_id}")
+        
+        # 检查任务是否存在
+        task = crud_task.get_task(db=db, task_id=image.task_id)
+        if not task:
+            logger.warning(f"图片关联的任务不存在，任务ID: {image.task_id}")
+            raise HTTPException(status_code=404, detail="任务不存在")
+        
+        logger.info(f"检查用户权限，用户ID: {current_user.id}, 任务所有者ID: {task.owner_id}")
+        
+        # 检查用户是否有权限删除图片
+        # 1. 如果是任务所有者，允许删除
+        # 2. 如果是系统管理员，允许删除
+        # 3. 如果是任务管理员，允许删除
+        # 4. 如果是图片上传者且有编辑权限，允许删除
+        if task.owner_id != current_user.id and not current_user.is_admin:
+            permission = crud_task.get_user_task_permission(db=db, task_id=image.task_id, user_id=current_user.id)
+            
+            # 构建详细的错误信息
+            error_details = []
+            
+            if not permission:
+                error_details.append("您没有该任务的任何权限")
+            else:
+                if permission.can_manage:
+                    # 任务管理员可以删除任何图片
+                    pass
+                elif not permission.can_edit:
+                    error_details.append("您没有该任务的编辑权限")
+                elif image.created_by != current_user.username:
+                    error_details.append("您不是该图片的上传者")
+            
+            if error_details:
+                error_message = "无法删除图片，原因：" + "；".join(error_details)
+                logger.warning(f"用户没有删除权限，用户ID: {current_user.id}, 任务ID: {image.task_id}, 原因: {error_message}")
+                raise HTTPException(status_code=403, detail=error_message)
+        
+        logger.info("权限验证通过，开始删除图片")
+        
+        try:
+            # 先删除数据库记录（包括关联的涉事人员信息）
+            result = crud_image.delete_image(db=db, image_id=image_id)
+            if not result:
+                logger.error("删除数据库记录失败")
+                raise HTTPException(status_code=500, detail="删除数据库记录失败")
+            
+            logger.info("数据库记录删除成功")
+            
+            # 如果数据库记录删除成功，再删除物理文件
+            if os.path.exists(image.file_path):
+                try:
+                    os.remove(image.file_path)
+                    logger.info(f"物理文件删除成功: {image.file_path}")
+                except Exception as e:
+                    # 记录错误但不抛出异常，因为数据库记录已经删除
+                    logger.error(f"删除物理文件失败: {str(e)}")
+            else:
+                logger.warning(f"物理文件不存在: {image.file_path}")
+            
+            logger.info("图片删除操作完成")
+            return {"status": "success", "message": "图片删除成功"}
+            
+        except HTTPException as e:
+            logger.error(f"HTTP异常: {str(e)}")
+            raise e
+        except Exception as e:
+            logger.error(f"删除图片时发生错误: {str(e)}", exc_info=True)
+            db.rollback()
+            raise HTTPException(status_code=500, detail=f"删除图片失败: {str(e)}")
+            
+    except HTTPException as e:
+        logger.error(f"HTTP异常: {str(e)}")
+        raise e
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"删除文件失败: {str(e)}")
-    
-    # 删除数据库记录
-    return crud_image.delete_image(db=db, image_id=image_id) 
+        logger.error(f"处理删除请求时发生错误: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"处理删除请求失败: {str(e)}") 

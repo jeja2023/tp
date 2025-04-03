@@ -36,9 +36,7 @@
             disableMapRotate: true,  // 禁用地图旋转控件
             disableMapPitch: true,   // 禁用地图倾斜控件
             disableMapCompass: true, // 禁用地图指南针
-            disableMapOverview: true,  // 禁用地图鹰眼
-            imageamap: '/static/js/amap/',  // 添加imageamap路径配置
-            mapamap: '/static/js/amap/'     // 添加mapamap路径配置
+            disableMapOverview: true  // 禁用地图鹰眼
         };
     </script>
     <style>
@@ -1038,19 +1036,31 @@
                     return;
                 }
 
-                // 按照时间对图片进行排序（升序）
-                images.sort((a, b) => new Date(a.time) - new Date(b.time));
+                // 按时间对图片进行排序
+                images.sort((a, b) => {
+                    const timeA = new Date(a.time);
+                    const timeB = new Date(b.time);
+                    return timeA - timeB;
+                });
                 
                 // 为排序后的图片添加编号
                 images.forEach((image, index) => {
-                    // 添加编号属性
                     image.timeOrderNumber = index + 1;
                 });
 
                 // 在全局保存原始图片数据数组，以便详情和原图按钮正常工作
                 window.taskImages = images;
                 
-                images.forEach(image => {
+                // 过滤掉无效的图片（文件不存在的图片）
+                window.taskImages = window.taskImages.filter(image => {
+                    const imageUrl = getImageUrl(image.file_path);
+                    return imageUrl !== '';
+                });
+                
+                console.log(`已加载 ${window.taskImages.length} 张有效图片，并按时间顺序编号`);
+                
+                // 显示图片卡片
+                window.taskImages.forEach(image => {
                     const imageCard = document.createElement('div');
                     imageCard.className = 'image-card';
                     
@@ -1108,8 +1118,6 @@
                     `;
                     imageGrid.appendChild(imageCard);
                 });
-                
-                console.log(`已加载 ${images.length} 张图片，并按时间顺序编号`);
             })
             .catch(error => {
                 console.error('获取图片列表失败:', error);
@@ -2066,9 +2074,21 @@
             // 更新当前图片索引
             if (window.taskImages && window.taskImages.length > 0) {
                 currentImageIndex = window.taskImages.findIndex(img => img.id === numericImageId);
-                console.log(`当前图片索引: ${currentImageIndex}`);
+                console.log(`当前图片索引: ${currentImageIndex}, 图片ID: ${numericImageId}, 图片数据:`, window.taskImages[currentImageIndex]);
+                
+                // 检查图片数据是否有效
+                if (currentImageIndex === -1) {
+                    console.error(`未找到ID为${numericImageId}的图片`);
+                    showMessage('无法显示图片详情：未找到图片数据', 'error');
+                    return;
+                }
+                
                 // 更新导航按钮状态
                 updateNavigationButtons();
+            } else {
+                console.error('没有可用的图片数据');
+                showMessage('无法显示图片详情：没有可用的图片数据', 'error');
+                return;
             }
             
             // 从URL获取任务ID
@@ -2080,40 +2100,21 @@
                 return;
             }
             
-            let userPermission;  // 声明一个变量来存储权限信息
-            
-            // 先检查用户权限
-            fetch(`/api/tasks/${taskId}/user-permission`, {
+            // 获取图片详情
+            fetch(`/api/images/${numericImageId}`, {
                 headers: {
                     'Authorization': `Bearer ${token}`
                 }
             })
             .then(response => {
                 if (!response.ok) {
-                    throw new Error('获取权限信息失败');
-                }
-                return response.json();
-            })
-            .then(permission => {
-                userPermission = permission;  // 保存权限信息
-                
-                // 检查用户是否有查看权限（查看、编辑、管理员、创建者都可以查看）
-                if (!permission.can_view && !permission.is_owner && 
-                    permission.permission_type !== 'edit' && 
-                    permission.permission_type !== 'admin') {
-                    throw new Error('没有查看权限');
-                }
-                
-                // 获取图片详情
-                return fetch(`/api/images/${numericImageId}`, {
-                    headers: {
-                        'Authorization': `Bearer ${token}`
+                    if (response.status === 404) {
+                        throw new Error(`图片不存在或已被删除 (ID: ${numericImageId})`);
+                    } else if (response.status === 403) {
+                        throw new Error('没有权限查看该图片');
+                    } else {
+                        throw new Error(`获取图片详情失败: ${response.status}`);
                     }
-                });
-            })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`获取图片详情失败: ${response.status}`);
                 }
                 return response.json();
             })
@@ -2151,46 +2152,43 @@
                 // 设置涉事人员信息
                 const peopleList = document.getElementById('detailPeopleList');
                 if (peopleList) {
-                    peopleList.innerHTML = '';
+                    peopleList.innerHTML = ''; // 清空现有内容
                     
                     if (image.people_involved && image.people_involved.length > 0) {
                         image.people_involved.forEach(person => {
                             const li = document.createElement('li');
+                            li.style.marginBottom = '5px';
+                            li.style.listStyleType = 'disc';
                             li.textContent = `${person.name} (${person.id_number})`;
                             peopleList.appendChild(li);
                         });
                     } else {
                         const li = document.createElement('li');
+                        li.style.marginBottom = '5px';
+                        li.style.listStyleType = 'disc';
                         li.textContent = '无';
                         peopleList.appendChild(li);
                     }
                 }
-
-                // 根据权限控制编辑和删除按钮的显示
-                const editBtn = document.querySelector('.edit-btn');
-                const deleteBtn = document.querySelector('.delete-btn');
-                const currentUsername = localStorage.getItem('username');
-
-                if (editBtn) {
-                    // 编辑权限：编辑者、管理员、创建者可以编辑
-                    editBtn.style.display = (userPermission.permission_type === 'edit' || 
-                        userPermission.permission_type === 'admin' || 
-                        userPermission.is_owner) ? 'inline-block' : 'none';
-                }
-
-                if (deleteBtn) {
-                    // 删除权限：管理员、创建者可以删除任何图片，编辑者只能删除自己上传的图片
-                    deleteBtn.style.display = (userPermission.permission_type === 'admin' || 
-                        userPermission.is_owner || 
-                        (userPermission.permission_type === 'edit' && image.created_by === currentUsername)) ? 'inline-block' : 'none';
-                }
-
+                
+                // 设置GPS坐标显示
+                const gpsText = image.gps_latitude && image.gps_longitude 
+                    ? `经度: ${image.gps_longitude}, 纬度: ${image.gps_latitude}`
+                    : '无';
+                document.getElementById('detailGPS').textContent = gpsText;
+                
                 // 设置键盘导航
                 setupKeyboardNavigation();
             })
             .catch(error => {
                 console.error('获取图片详情失败:', error);
                 showMessage(error.message || '获取图片详情失败', 'error');
+                
+                // 如果图片不存在，从window.taskImages中移除该图片
+                if (error.message.includes('图片不存在')) {
+                    window.taskImages = window.taskImages.filter(img => img.id !== numericImageId);
+                    console.log(`已从图片列表中移除ID为${numericImageId}的图片`);
+                }
             });
         }
         
@@ -2273,17 +2271,28 @@
                 return;
             }
             
-            if (!window.taskImages || window.taskImages.length === 0 || currentImageIndex <= 0) {
-                return; // 如果没有图片数据或已经是第一张，则不执行任何操作
+            if (!window.taskImages || window.taskImages.length === 0) {
+                console.error('没有可用的图片数据');
+                return;
+            }
+            
+            if (currentImageIndex <= 0) {
+                console.log('已经是第一张图片');
+                return;
             }
             
             // 获取上一张图片的ID
             const prevIndex = currentImageIndex - 1;
-            const prevImageId = window.taskImages[prevIndex].id;
+            const prevImage = window.taskImages[prevIndex];
+            
+            if (!prevImage || !prevImage.id) {
+                console.error('上一张图片数据无效:', prevImage);
+                return;
+            }
             
             // 显示上一张图片详情
-            console.log(`显示上一张图片，索引: ${prevIndex}, ID: ${prevImageId}`);
-            showImageDetail(prevImageId);
+            console.log(`显示上一张图片，索引: ${prevIndex}, ID: ${prevImage.id}, 图片数据:`, prevImage);
+            showImageDetail(prevImage.id);
         }
         
         // 显示下一张图片
@@ -2295,17 +2304,28 @@
                 return;
             }
             
-            if (!window.taskImages || window.taskImages.length === 0 || currentImageIndex >= window.taskImages.length - 1) {
-                return; // 如果没有图片数据或已经是最后一张，则不执行任何操作
+            if (!window.taskImages || window.taskImages.length === 0) {
+                console.error('没有可用的图片数据');
+                return;
+            }
+            
+            if (currentImageIndex >= window.taskImages.length - 1) {
+                console.log('已经是最后一张图片');
+                return;
             }
             
             // 获取下一张图片的ID
             const nextIndex = currentImageIndex + 1;
-            const nextImageId = window.taskImages[nextIndex].id;
+            const nextImage = window.taskImages[nextIndex];
+            
+            if (!nextImage || !nextImage.id) {
+                console.error('下一张图片数据无效:', nextImage);
+                return;
+            }
             
             // 显示下一张图片详情
-            console.log(`显示下一张图片，索引: ${nextIndex}, ID: ${nextImageId}`);
-            showImageDetail(nextImageId);
+            console.log(`显示下一张图片，索引: ${nextIndex}, ID: ${nextImage.id}, 图片数据:`, nextImage);
+            showImageDetail(nextImage.id);
         }
         
         // 切换编辑模式
@@ -2318,13 +2338,95 @@
             const cancelBtn = document.querySelector('.cancel-btn');
             
             if (displayInfo.style.display !== 'none') {
+                // 切换到编辑模式
                 displayInfo.style.display = 'none';
                 editForm.style.display = 'block';
                 editBtn.style.display = 'none';
                 deleteBtn.style.display = 'none';
                 saveBtn.style.display = 'inline-block';
                 cancelBtn.style.display = 'inline-block';
+                
+                // 获取当前图片数据
+                const modal = document.getElementById('imageDetailModal');
+                const imageId = modal.dataset.imageId;
+                
+                // 填充表单数据
+                const time = document.getElementById('detailTime').textContent;
+                const location = document.getElementById('detailLocation').textContent;
+                const transportation = document.getElementById('detailTransportation').textContent;
+                const description = document.getElementById('detailDescription').textContent;
+                const gpsText = document.getElementById('detailGPS').textContent;
+                
+                // 将时间字符串转换为datetime-local格式
+                const dateObj = new Date(time);
+                const timezoneOffset = dateObj.getTimezoneOffset() * 60000;
+                const localISOTime = (new Date(dateObj - timezoneOffset)).toISOString().slice(0, 16);
+                
+                // 设置表单字段值
+                document.getElementById('editTime').value = localISOTime;
+                document.getElementById('editLocation').value = location;
+                document.getElementById('editTransportation').value = transportation;
+                document.getElementById('editDescription').value = description === '无' ? '' : description;
+                
+                // 处理GPS坐标
+                if (gpsText && gpsText !== '无') {
+                    const gpsMatch = gpsText.match(/经度: ([\d.-]+), 纬度: ([\d.-]+)/);
+                    if (gpsMatch) {
+                        document.getElementById('editLongitude').value = gpsMatch[1];
+                        document.getElementById('editLatitude').value = gpsMatch[2];
+                    }
+                }
+                
+                // 处理涉事人员信息
+                const peopleContainer = document.getElementById('edit-people-container');
+                peopleContainer.innerHTML = ''; // 清空现有内容
+                
+                // 获取涉事人员列表
+                const peopleList = document.getElementById('detailPeopleList');
+                if (peopleList) {
+                    const peopleItems = peopleList.getElementsByTagName('li');
+                    
+                    if (peopleItems.length > 0 && peopleItems[0].textContent !== '无') {
+                        Array.from(peopleItems).forEach(item => {
+                            const personMatch = item.textContent.match(/(.+) \((.+)\)/);
+                            if (personMatch) {
+                                const personForm = document.createElement('div');
+                                personForm.className = 'person-form';
+                                personForm.innerHTML = `
+                                    <button type="button" class="remove-person-btn" onclick="this.parentElement.remove()">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                    <div class="person-info-inputs">
+                                        <input type="text" class="person-name" placeholder="姓名" value="${personMatch[1]}" required>
+                                        <input type="text" class="person-id" placeholder="身份证号" value="${personMatch[2]}" required>
+                                        <input type="text" class="person-address" placeholder="户籍地" value="" required>
+                                    </div>
+                                `;
+                                peopleContainer.appendChild(personForm);
+                            }
+                        });
+                    }
+                }
+                
+                // 添加"添加人员"按钮的事件监听
+                document.getElementById('add-person-btn').onclick = function() {
+                    const personForm = document.createElement('div');
+                    personForm.className = 'person-form';
+                    personForm.innerHTML = `
+                        <button type="button" class="remove-person-btn" onclick="this.parentElement.remove()">
+                            <i class="fas fa-times"></i>
+                        </button>
+                        <div class="person-info-inputs">
+                            <input type="text" class="person-name" placeholder="姓名" required>
+                            <input type="text" class="person-id" placeholder="身份证号" required>
+                            <input type="text" class="person-address" placeholder="户籍地" required>
+                        </div>
+                    `;
+                    peopleContainer.appendChild(personForm);
+                };
+                
             } else {
+                // 切换回显示模式
                 displayInfo.style.display = 'block';
                 editForm.style.display = 'none';
                 editBtn.style.display = 'inline-block';
@@ -2701,7 +2803,8 @@
                         <p><i class="fas fa-map-marker-alt"></i> 地点：<span id="detailLocation"></span></p>
                         <p><i class="fas fa-car"></i> 交通方式：<span id="detailTransportation"></span></p>
                         <p><i class="fas fa-comment-alt"></i> 事件描述：<span id="detailDescription"></span></p>
-                        <p><i class="fas fa-user"></i> 涉事人员：<span id="detailPerson"></span></p>
+                        <p><i class="fas fa-users"></i> 涉事人员：</p>
+                        <ul id="detailPeopleList" style="margin-left: 20px; margin-top: 5px;"></ul>
                         <p><i class="fas fa-map"></i> GPS坐标：<span id="detailGPS"></span></p>
                         <p><i class="fas fa-user"></i> 上传者：<span id="detailUploader"></span></p>
                         <p><i class="fas fa-upload"></i> 上传时间：<span id="detailUploadTime"></span></p>

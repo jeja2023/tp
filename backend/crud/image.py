@@ -14,16 +14,60 @@ logger = setup_logger("crud_image")
 def get_image(db: Session, image_id: int) -> Optional[models.Image]:
     """根据ID获取图片"""
     try:
-        image = db.query(models.Image).filter(models.Image.id == image_id).first()
+        logger.info(f"开始获取图片，ID: {image_id}")
+        
+        # 检查数据库连接
+        if not db:
+            logger.error("数据库会话无效")
+            raise HTTPException(status_code=500, detail="数据库连接错误")
+            
+        # 获取图片信息
+        try:
+            image = db.query(models.Image).filter(models.Image.id == image_id).first()
+            logger.info(f"数据库查询完成，结果: {'找到图片' if image else '未找到图片'}")
+        except Exception as e:
+            logger.error(f"数据库查询失败: {str(e)}", exc_info=True)
+            raise HTTPException(status_code=500, detail=f"数据库查询失败: {str(e)}")
+            
         if not image:
-            return None
+            logger.warning(f"图片不存在，ID: {image_id}")
+            raise HTTPException(status_code=404, detail="图片不存在")
             
+        logger.info(f"找到图片，任务ID: {image.task_id}, 文件路径: {image.file_path}")
+        
         # 获取任务信息
-        task = db.query(models.Task).filter(models.Task.id == image.task_id).first()
-        if not task:
-            return None
+        try:
+            task = db.query(models.Task).filter(models.Task.id == image.task_id).first()
+            logger.info(f"任务查询完成，结果: {'找到任务' if task else '未找到任务'}")
+        except Exception as e:
+            logger.error(f"任务查询失败: {str(e)}", exc_info=True)
+            raise HTTPException(status_code=500, detail=f"任务查询失败: {str(e)}")
             
+        if not task:
+            logger.warning(f"图片关联的任务不存在，任务ID: {image.task_id}")
+            raise HTTPException(status_code=404, detail="图片关联的任务不存在")
+            
+        # 检查文件是否存在
+        if not os.path.exists(image.file_path):
+            logger.warning(f"图片文件不存在，路径: {image.file_path}")
+            raise HTTPException(status_code=404, detail="图片文件不存在")
+            
+        # 获取涉事人员信息
+        try:
+            people = db.query(models.PersonInvolved).filter(
+                models.PersonInvolved.image_id == image_id
+            ).all()
+            logger.info(f"获取到 {len(people)} 个涉事人员信息")
+        except Exception as e:
+            logger.error(f"获取涉事人员信息失败: {str(e)}", exc_info=True)
+            # 不抛出异常，继续返回图片信息
+            
+        logger.info(f"成功获取图片和任务信息，图片ID: {image_id}, 任务ID: {image.task_id}")
         return image
+        
+    except HTTPException as e:
+        logger.error(f"HTTP异常: {str(e)}")
+        raise e
     except Exception as e:
         logger.error(f"获取图片失败: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"获取图片失败: {str(e)}")
@@ -69,7 +113,6 @@ def create_image(db: Session, image: schemas.ImageCreate) -> models.Image:
             gps_latitude=image.gps_latitude,
             gps_longitude=image.gps_longitude,
             transportation=image.transportation,
-            sequence_number=image.sequence_number,
             created_by=image.created_by,
             task_id=image.task_id,
             user_id=db.query(models.Task).filter(models.Task.id == image.task_id).first().owner_id,
@@ -121,30 +164,57 @@ def create_image(db: Session, image: schemas.ImageCreate) -> models.Image:
 def delete_image(db: Session, image_id: int) -> bool:
     """删除图片及其文件"""
     try:
+        logger.info(f"开始删除图片，ID: {image_id}")
+        
+        # 获取图片信息
         db_image = get_image(db, image_id)
         if not db_image:
+            logger.error(f"图片不存在，ID: {image_id}")
             raise HTTPException(status_code=404, detail="图片不存在")
         
         # 记录文件名用于日志
         filename = db_image.file_path
+        logger.info(f"找到图片记录，文件路径: {filename}")
         
-        # 删除物理文件
-        file_path = Path(db_image.file_path)
-        if file_path.exists():
-            file_path.unlink()
-        
-        # 删除数据库记录
-        db.delete(db_image)
-        db.commit()
-        
-        logger.info(f"成功删除图片: {filename}")
-        return True
-        
+        # 开始事务
+        try:
+            # 删除关联的涉事人员信息
+            people = db.query(models.PersonInvolved).filter(
+                models.PersonInvolved.image_id == image_id
+            ).all()
+            logger.info(f"找到 {len(people)} 个关联的涉事人员信息")
+            
+            for person in people:
+                try:
+                    db.delete(person)
+                    logger.info(f"已删除涉事人员记录，ID: {person.id}")
+                except Exception as e:
+                    logger.error(f"删除涉事人员记录失败，ID: {person.id}, 错误: {str(e)}")
+                    raise
+            
+            # 删除图片记录
+            try:
+                db.delete(db_image)
+                logger.info("已删除图片记录")
+            except Exception as e:
+                logger.error(f"删除图片记录失败: {str(e)}")
+                raise
+            
+            # 提交事务
+            db.commit()
+            logger.info(f"事务提交成功，已删除数据库记录: {filename}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"删除数据库记录失败: {str(e)}", exc_info=True)
+            db.rollback()
+            raise HTTPException(status_code=500, detail=f"删除数据库记录失败: {str(e)}")
+            
     except HTTPException as e:
+        logger.error(f"HTTP异常: {str(e)}")
         raise e
     except Exception as e:
         logger.error(f"删除图片失败: {str(e)}", exc_info=True)
-        db.rollback()
         raise HTTPException(status_code=500, detail=f"删除图片失败: {str(e)}")
 
 def get_images_by_company(db: Session, company: str) -> List[models.Image]:

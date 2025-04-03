@@ -19,8 +19,8 @@ class KeyManager:
         # 设置文件路径
         self.key_file = key_file or os.path.join(root_dir, ".env")
         self.rotation_interval_days = rotation_interval_days
-        self.last_rotation_file = os.path.join(root_dir, "backend", "last_key_rotation.txt")
         self.backup_dir = backup_dir or os.path.join(root_dir, "backend", "keybackups")
+        self.last_rotation_file = os.path.join(self.backup_dir, "last_key_rotation.txt")
         
         # 确保备份目录存在
         if not os.path.exists(self.backup_dir):

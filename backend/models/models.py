@@ -84,7 +84,6 @@ class Image(Base):
     gps_latitude = Column(Float, nullable=True)
     gps_longitude = Column(Float, nullable=True)
     transportation = Column(String(50), nullable=False)
-    sequence_number = Column(Integer)
     created_at = Column(DateTime(timezone=True), default=get_now_shanghai)
     updated_at = Column(DateTime(timezone=True), default=get_now_shanghai, onupdate=get_now_shanghai)
     created_by = Column(String(50), nullable=True)

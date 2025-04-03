@@ -13,6 +13,8 @@
 - 轨迹报告自动生成（支持Excel和Word格式）
 - 响应式设计，支持移动设备访问
 - JWT密钥自动轮换机制，增强系统安全性
+- 离线地图支持，无需联网即可使用
+- 完整的日志记录和错误追踪
 
 ## 中文编码优化
 
@@ -46,7 +48,6 @@
 │   ├── api/                # API接口定义
 │   ├── config/             # 配置文件
 │   ├── crud/               # 数据库操作
-│   ├── db/                 # 数据库相关
 │   │   ├── database.py     # 数据库连接配置
 │   │   └── initialize_db.py # 数据库初始化脚本
 │   ├── middleware/         # 中间件
@@ -358,21 +359,39 @@ docker run -d --name tp-app \
 - 确认文件大小限制
 - 验证文件类型限制
 
+## 最新更新
+
+- 优化了图片上传性能，支持大文件分片上传
+- 增加了批量图片处理功能
+- 改进了轨迹数据的导入导出功能
+- 新增了数据备份和恢复功能
+- 优化了移动端适配
+
+## 开发计划
+
+- [ ] 添加图片AI识别功能
+- [ ] 支持更多地图服务商
+- [ ] 优化报告生成性能
+- [ ] 添加数据可视化图表
+- [ ] 实现实时协作功能
+
 ## 贡献指南
 
-欢迎贡献代码、报告问题或提出改进建议：
-1. Fork 项目
-2. 创建特性分支 (`git checkout -b feature/amazing-feature`)
-3. 提交更改 (`git commit -m 'Add some amazing feature'`)
-4. 推送到分支 (`git push origin feature/amazing-feature`)
-5. 创建Pull Request
+欢迎提交Issue和Pull Request来帮助改进项目。在提交代码前，请确保：
+
+1. 代码符合项目的编码规范
+2. 添加了必要的测试用例
+3. 更新了相关文档
+4. 所有测试都能通过
 
 ## 许可证
 
-MIT License
+本项目采用 MIT 许可证。详见 [LICENSE](LICENSE) 文件。
 
 ## 联系方式
 
-- 项目维护者：[jeja2023](https://github.com/jeja2023)
-- 项目仓库：[https://github.com/jeja2023/tp](https://github.com/jeja2023/tp)
-- 问题反馈：请在GitHub仓库中提交Issue
+如有问题或建议，请通过以下方式联系：
+
+- 提交 Issue
+- 发送邮件至：[您的邮箱]
+- 项目主页：[GitHub仓库地址]
