@@ -33,8 +33,7 @@ tp/
 ├── .env                  # 环境变量配置
 ├── .env.example         # 环境变量示例
 ├── main.py              # 主程序入口
-├── requirements.txt     # 依赖包列表
-└── OFFLINE_INSTALL.md   # 离线安装说明
+└── requirements.txt     # 依赖包列表
 ```
 
 ## 主要功能
@@ -69,20 +68,46 @@ tp/
 
 ## 安装说明
 
-详细的安装说明请参考 [OFFLINE_INSTALL.md](OFFLINE_INSTALL.md)
+1. 克隆项目
+```bash
+git clone https://github.com/jeja2023/tp.git
+cd tp
+```
+
+2. 创建虚拟环境
+```bash
+python -m venv venv
+source venv/bin/activate  # Linux/Mac
+venv\Scripts\activate     # Windows
+```
+
+3. 安装依赖
+```bash
+pip install -r requirements.txt
+```
+
+4. 配置环境变量
+- 复制 `.env.example` 为 `.env`
+- 修改数据库配置
+- 配置服务器参数
+- 设置安全参数
+
+5. 创建数据库
+```sql
+CREATE DATABASE tp CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+```
+
+6. 执行数据库迁移
+```bash
+cd backend
+alembic upgrade head
+```
 
 ## 开发环境
 
 - Python 3.8+
 - MySQL 5.7+
 - Node.js 14+ (可选，用于前端开发)
-
-## 配置说明
-
-1. 复制 `.env.example` 为 `.env`
-2. 修改数据库配置
-3. 配置服务器参数
-4. 设置安全参数
 
 ## 运行说明
 
@@ -108,7 +133,7 @@ http://localhost:8000
 ### 2024-04-03
 - 优化轨迹报告格式
 - 移除图片在线查看功能
-- 添加离线安装说明文档
+- 更新项目文档
 
 ### 2024-04-02
 - 添加文件管理功能
