@@ -43,53 +43,57 @@
 ```
 .
 ├── backend/                 # 后端代码
-│   ├── db/                  # 数据库相关
-│   │   ├── database.py      # 数据库连接配置
+│   ├── api/                # API接口定义
+│   ├── config/             # 配置文件
+│   ├── crud/               # 数据库操作
+│   ├── db/                 # 数据库相关
+│   │   ├── database.py     # 数据库连接配置
 │   │   └── initialize_db.py # 数据库初始化脚本
-│   ├── models/              # 数据模型
-│   │   └── models.py        # SQLAlchemy模型定义
-│   ├── routers/             # API路由
-│   │   ├── base.py          # 基础API，处理前端页面渲染
-│   │   ├── users.py         # 用户相关API，包括认证和权限
-│   │   ├── tasks.py         # 任务相关API
-│   │   ├── images.py        # 图片相关API
-│   │   ├── trajectory.py    # 轨迹生成相关API
-│   │   └── map.py           # 地图相关API
-│   ├── utils/               # 工具函数
-│   │   ├── logger.py        # 日志配置工具
-│   │   └── key_manager.py   # JWT密钥管理工具
-│   └── migrations/          # 数据库迁移脚本
-│       └── versions/        # 迁移版本
-├── frontend/                # 前端代码
-│   ├── static/              # 静态资源
-│   │   ├── css/             # 样式表
-│   │   └── js/              # JavaScript脚本
-│   │       ├── app.js       # 主应用脚本
-│   │       ├── map.js       # 地图功能脚本
+│   ├── middleware/         # 中间件
+│   ├── models/             # 数据模型
+│   │   └── models.py       # SQLAlchemy模型定义
+│   ├── routers/            # API路由
+│   │   ├── base.py         # 基础API，处理前端页面渲染
+│   │   ├── users.py        # 用户相关API，包括认证和权限
+│   │   ├── tasks.py        # 任务相关API
+│   │   ├── images.py       # 图片相关API
+│   │   ├── trajectory.py   # 轨迹生成相关API
+│   │   └── map.py          # 地图相关API
+│   ├── utils/              # 工具函数
+│   │   ├── logger.py       # 日志配置工具
+│   │   └── key_manager.py  # JWT密钥管理工具
+│   ├── tools/              # 工具类
+│   ├── logging/            # 日志相关
+│   ├── keybackups/         # JWT密钥备份目录
+│   ├── migrations/         # 数据库迁移脚本
+│   │   └── versions/       # 迁移版本
+│   └── temp/               # 临时文件目录
+├── frontend/               # 前端代码
+│   ├── static/             # 静态资源
+│   │   ├── css/            # 样式表
+│   │   └── js/             # JavaScript脚本
+│   │       ├── app.js      # 主应用脚本
+│   │       ├── map.js      # 地图功能脚本
 │   │       ├── task-manager.js # 任务管理脚本
 │   │       ├── trajectory.js # 轨迹处理脚本
-│   │       ├── MAP_zxy/     # 离线地图瓦片资源
-│   │       └── utils.js     # 工具函数脚本
-│   ├── index.html           # 首页
-│   ├── login.html           # 登录页
-│   ├── admin.html           # 管理员页面
-│   ├── task.html            # 任务列表页
-│   ├── upload.html          # 任务详情和上传页
-│   ├── image.html           # 图片管理页面
-│   └── map.html             # 地图功能页面
-├── uploads/                 # 上传文件存储目录
-├── outputs/                 # 生成的报告存储目录
-├── logs/                    # 日志文件目录
-├── keybackups/              # JWT密钥备份目录
-├── main.py                  # 主程序入口
-├── config.py                # 配置文件
-├── check_key_status.py      # JWT密钥状态检查工具
-├── rotate_key.py            # JWT密钥手动轮换工具
-├── key_management_readme.md # JWT密钥管理说明文档
-├── requirements.txt         # 依赖包列表
-├── .env.example             # 环境变量示例
-├── .env                     # 环境变量配置(本地开发使用，不提交到版本控制)
-└── README.md                # 项目说明文档
+│   │       ├── MAP_zxy/    # 离线地图瓦片资源
+│   │       └── utils.js    # 工具函数脚本
+│   ├── index.html          # 首页
+│   ├── login.html          # 登录页
+│   ├── admin.html          # 管理员页面
+│   ├── task.html           # 任务列表页
+│   ├── upload.html         # 任务详情和上传页
+│   ├── image.html          # 图片管理页面
+│   └── map.html            # 地图功能页面
+├── uploads/                # 上传文件存储目录
+├── outputs/                # 生成的报告存储目录
+├── pip_packages/           # Python包依赖
+├── .venv/                  # Python虚拟环境
+├── main.py                 # 主程序入口
+├── requirements.txt        # 依赖包列表
+├── .env.example            # 环境变量示例
+├── .env                    # 环境变量配置(本地开发使用，不提交到版本控制)
+└── README.md               # 项目说明文档
 ```
 
 ## 环境要求
