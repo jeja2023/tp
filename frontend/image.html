@@ -2235,9 +2235,17 @@
         function updateNavigationButtons() {
             const prevArrow = document.getElementById('prevImageArrow');
             const nextArrow = document.getElementById('nextImageArrow');
+            const editForm = document.getElementById('imageInfoEdit');
             
             if (!window.taskImages || window.taskImages.length === 0 || currentImageIndex === -1) {
                 // 如果没有图片数据或当前索引无效，禁用两个箭头
+                prevArrow.classList.add('disabled');
+                nextArrow.classList.add('disabled');
+                return;
+            }
+            
+            // 如果处于编辑模式，禁用导航按钮
+            if (editForm.style.display === 'block') {
                 prevArrow.classList.add('disabled');
                 nextArrow.classList.add('disabled');
                 return;
@@ -2260,9 +2268,10 @@
         // 显示上一张图片
         function showPrevImage() {
             const prevArrow = document.getElementById('prevImageArrow');
+            const editForm = document.getElementById('imageInfoEdit');
             
-            // 如果箭头被禁用，不执行操作
-            if (prevArrow.classList.contains('disabled')) {
+            // 如果箭头被禁用或处于编辑模式，不执行操作
+            if (prevArrow.classList.contains('disabled') || editForm.style.display === 'block') {
                 return;
             }
             
@@ -2293,9 +2302,10 @@
         // 显示下一张图片
         function showNextImage() {
             const nextArrow = document.getElementById('nextImageArrow');
+            const editForm = document.getElementById('imageInfoEdit');
             
-            // 如果箭头被禁用，不执行操作
-            if (nextArrow.classList.contains('disabled')) {
+            // 如果箭头被禁用或处于编辑模式，不执行操作
+            if (nextArrow.classList.contains('disabled') || editForm.style.display === 'block') {
                 return;
             }
             
