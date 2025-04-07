@@ -1133,6 +1133,14 @@
             if (closeModalBtn) {
                 closeModalBtn.addEventListener('click', function() {
                     const modal = document.getElementById('imageDetailModal');
+                    const editForm = document.getElementById('imageInfoEdit');
+                    
+                    // 如果当前处于编辑模式，先退出编辑模式
+                    if (editForm.style.display === 'block') {
+                        toggleEditMode();
+                    }
+                    
+                    // 关闭弹窗
                     modal.style.display = 'none';
                     
                     // 关闭弹窗时移除键盘监听
@@ -1146,7 +1154,15 @@
             // 添加点击弹窗外部关闭事件监听器
             window.addEventListener('click', function(event) {
                 const modal = document.getElementById('imageDetailModal');
+                const editForm = document.getElementById('imageInfoEdit');
+                
                 if (event.target === modal) {
+                    // 如果当前处于编辑模式，先退出编辑模式
+                    if (editForm.style.display === 'block') {
+                        toggleEditMode();
+                    }
+                    
+                    // 关闭弹窗
                     modal.style.display = 'none';
                 }
             });
@@ -2145,24 +2161,15 @@
                 });
                 
                 // 设置涉事人员信息
-                const peopleList = document.getElementById('detailPeopleList');
-                if (peopleList) {
-                    peopleList.innerHTML = ''; // 清空现有内容
-                    
+                const peopleElement = document.getElementById('detailPeople');
+                if (peopleElement) {
                     if (image.people_involved && image.people_involved.length > 0) {
-                        image.people_involved.forEach(person => {
-                            const li = document.createElement('li');
-                            li.style.marginBottom = '5px';
-                            li.style.listStyleType = 'disc';
-                            li.textContent = `${person.name} (${person.id_number})`;
-                            peopleList.appendChild(li);
-                        });
+                        const peopleText = image.people_involved.map(person => 
+                            `${person.name} (${person.id_number})`
+                        ).join('、');
+                        peopleElement.textContent = peopleText;
                     } else {
-                        const li = document.createElement('li');
-                        li.style.marginBottom = '5px';
-                        li.style.listStyleType = 'disc';
-                        li.textContent = '无';
-                        peopleList.appendChild(li);
+                        peopleElement.textContent = '无';
                     }
                 }
                 
@@ -2386,31 +2393,40 @@
                 const peopleContainer = document.getElementById('edit-people-container');
                 peopleContainer.innerHTML = ''; // 清空现有内容
                 
-                // 获取涉事人员列表
-                const peopleList = document.getElementById('detailPeopleList');
-                if (peopleList) {
-                    const peopleItems = peopleList.getElementsByTagName('li');
-                    
-                    if (peopleItems.length > 0 && peopleItems[0].textContent !== '无') {
-                        Array.from(peopleItems).forEach(item => {
-                            const personMatch = item.textContent.match(/(.+) \((.+)\)/);
-                            if (personMatch) {
-                                const personForm = document.createElement('div');
-                                personForm.className = 'person-form';
-                                personForm.innerHTML = `
-                                    <button type="button" class="remove-person-btn" onclick="this.parentElement.remove()">
-                                        <i class="fas fa-times"></i>
-                                    </button>
-                                    <div class="person-info-inputs">
-                                        <input type="text" class="person-name" placeholder="姓名" value="${personMatch[1]}" required>
-                                        <input type="text" class="person-id" placeholder="身份证号" value="${personMatch[2]}" required>
-                                        <input type="text" class="person-address" placeholder="户籍地" value="" required>
-                                    </div>
-                                `;
-                                peopleContainer.appendChild(personForm);
-                            }
-                        });
-                    }
+                // 获取涉事人员信息
+                const peopleText = document.getElementById('detailPeople').textContent;
+                if (peopleText && peopleText !== '无') {
+                    // 分割人员信息
+                    const peopleArray = peopleText.split('、');
+                    peopleArray.forEach(personText => {
+                        const match = personText.match(/(.+)\s*\((.+)\)/);
+                        if (match) {
+                            const name = match[1].trim();
+                            const idNumber = match[2].trim();
+                            
+                            // 从原始图片数据中获取户籍地信息
+                            const currentImage = window.taskImages.find(img => img.id === parseInt(imageId));
+                            const personData = currentImage?.people_involved?.find(p => 
+                                p.name === name && p.id_number === idNumber
+                            );
+                            const householdRegistration = personData?.household_registration || '';
+                            
+                            // 创建人员表单
+                            const personForm = document.createElement('div');
+                            personForm.className = 'person-form';
+                            personForm.innerHTML = `
+                                <button type="button" class="remove-person-btn" onclick="this.parentElement.remove()">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                                <div class="person-info-inputs">
+                                    <input type="text" class="person-name" placeholder="姓名" value="${name}" required>
+                                    <input type="text" class="person-id" placeholder="身份证号" value="${idNumber}" required>
+                                    <input type="text" class="person-address" placeholder="户籍地" value="${householdRegistration}" required>
+                                </div>
+                            `;
+                            peopleContainer.appendChild(personForm);
+                        }
+                    });
                 }
                 
                 // 添加"添加人员"按钮的事件监听
@@ -2808,8 +2824,7 @@
                         <p><i class="fas fa-map-marker-alt"></i> 地点：<span id="detailLocation"></span></p>
                         <p><i class="fas fa-car"></i> 交通方式：<span id="detailTransportation"></span></p>
                         <p><i class="fas fa-comment-alt"></i> 事件描述：<span id="detailDescription"></span></p>
-                        <p><i class="fas fa-users"></i> 涉事人员：</p>
-                        <ul id="detailPeopleList" style="margin-left: 20px; margin-top: 5px;"></ul>
+                        <p><i class="fas fa-users"></i> 涉事人员：<span id="detailPeople"></span></p>
                         <p><i class="fas fa-map"></i> GPS坐标：<span id="detailGPS"></span></p>
                         <p><i class="fas fa-user"></i> 上传者：<span id="detailUploader"></span></p>
                         <p><i class="fas fa-upload"></i> 上传时间：<span id="detailUploadTime"></span></p>
