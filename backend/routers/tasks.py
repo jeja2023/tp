@@ -23,6 +23,12 @@ def create_task(task: schemas.TaskCreate, current_user: models.User = Depends(ge
 @router.get("/", response_model=List[schemas.Task])
 def get_user_tasks(current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
     try:
+        # 如果是系统管理员，返回所有任务
+        if current_user.is_admin:
+            tasks = db.query(models.Task).all()
+            return tasks
+            
+        # 普通用户获取自己创建的和被分享的任务
         tasks = crud_task.get_tasks_by_user(db=db, user_id=current_user.id)
         return tasks
     except Exception as e:
@@ -52,11 +58,15 @@ def update_task(
     if not task:
         raise HTTPException(status_code=404, detail="任务不存在")
     
-    # 检查是否有权限更新任务
+    # 系统管理员可以更新任何任务
+    if current_user.is_admin:
+        return crud_task.update_task(db=db, task_id=task_id, task=task_update)
+    
+    # 检查用户是否是任务创建者
     if task.owner_id != current_user.id:
         # 检查是否有编辑权限
         permission = crud_task.get_user_task_permission(db=db, task_id=task_id, user_id=current_user.id)
-        if not permission or permission.permission_type not in ["edit", "admin"]:
+        if not permission or not permission.can_edit:
             raise HTTPException(status_code=403, detail="没有权限编辑此任务")
     
     # 更新任务
@@ -77,6 +87,10 @@ def create_task_permission(
     task = crud_task.get_task(db=db, task_id=task_id)
     if not task:
         raise HTTPException(status_code=404, detail="任务不存在")
+    
+    # 系统管理员可以分享任何任务
+    if current_user.is_admin:
+        return crud_task.create_task_permission(db=db, permission=permission, task_id=task_id, shared_by_id=current_user.id)
     
     # 检查权限：任务创建者或有管理员权限的用户可以分享任务
     if task.owner_id != current_user.id:
@@ -105,12 +119,16 @@ def delete_task_permission(
         raise HTTPException(status_code=404, detail="用户不存在")
     
     # 检查权限分级：
-    # 1. 任务创建者可以删除任何人的权限
-    # 2. 管理员只能删除自己分享的权限
-    # 3. 普通用户无法删除权限
+    # 1. 系统管理员可以删除任何权限
+    # 2. 任务创建者可以删除任何人的权限
+    # 3. 管理员只能删除自己分享的权限
+    # 4. 普通用户无法删除权限
     is_owner = task.owner_id == current_user.id
     
-    if is_owner:
+    if current_user.is_admin:
+        # 系统管理员可以删除任何权限
+        pass
+    elif is_owner:
         # 任务创建者可以删除任何人的权限
         pass
     else:
@@ -170,6 +188,18 @@ def get_user_task_permission_info(
     if not task:
         raise HTTPException(status_code=404, detail="任务不存在")
     
+    # 如果是系统管理员，拥有全部权限
+    if current_user.is_admin:
+        return {
+            "is_owner": False,
+            "can_view": True,
+            "can_edit": True,
+            "can_upload": True,
+            "can_manage": True,
+            "can_share": True,
+            "permission_type": "admin"
+        }
+    
     # 检查用户是否是任务创建者
     is_owner = task.owner_id == current_user.id
     
@@ -213,9 +243,9 @@ def delete_task(
     if not task:
         raise HTTPException(status_code=404, detail="任务不存在")
     
-    # 只有任务创建者可以删除任务
-    if task.owner_id != current_user.id:
-        raise HTTPException(status_code=403, detail="只有任务创建者可以删除任务")
+    # 系统管理员和任务创建者可以删除任务
+    if not current_user.is_admin and task.owner_id != current_user.id:
+        raise HTTPException(status_code=403, detail="只有系统管理员和任务创建者可以删除任务")
     
     # 删除任务及其所有相关数据
     result = crud_task.delete_task(db=db, task_id=task_id)
@@ -236,9 +266,9 @@ def get_task_permissions(
     if not task:
         raise HTTPException(status_code=404, detail="任务不存在")
     
-    # 检查权限：任务创建者或有管理员权限的用户可以查看权限列表
+    # 检查权限：系统管理员、任务创建者或有管理员权限的用户可以查看权限列表
     is_owner = task.owner_id == current_user.id
-    if not is_owner:
+    if not current_user.is_admin and not is_owner:
         user_permission = crud_task.get_user_task_permission(db=db, task_id=task_id, user_id=current_user.id)
         if not user_permission or not user_permission.can_manage:
             raise HTTPException(status_code=403, detail="只有任务创建者或管理员可以查看权限列表")
@@ -246,8 +276,8 @@ def get_task_permissions(
     # 获取权限记录
     permissions = db.query(models.TaskPermission).filter(models.TaskPermission.task_id == task_id)
     
-    # 如果不是任务创建者，则只能查看自己分享的权限记录
-    if not is_owner:
+    # 如果不是系统管理员且不是任务创建者，则只能查看自己分享的权限记录
+    if not current_user.is_admin and not is_owner:
         permissions = permissions.filter(models.TaskPermission.shared_by_id == current_user.id)
     
     permissions = permissions.all()

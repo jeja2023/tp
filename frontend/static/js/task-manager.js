@@ -110,134 +110,121 @@ function loadTasks() {
 // 渲染任务列表
 function renderTasksList(tasks) {
     console.log('渲染任务列表，任务数量:', tasks.length);
-    const taskTableBody = document.getElementById('task-table-body');
+    
+    // 获取当前用户信息，检查是否为管理员
     const currentUsername = localStorage.getItem('username');
+    let isAdmin = false;
     
-    if (!taskTableBody) {
-        console.error('找不到任务表格元素');
-        return;
-    }
-    
-    taskTableBody.innerHTML = '';
-    
-    if (tasks.length === 0) {
-        const row = document.createElement('tr');
-        row.innerHTML = '<td colspan="5" class="no-tasks">没有任务</td>';
-        taskTableBody.appendChild(row);
-        return;
-    }
-    
-    // 确保任务按ID降序排序
-    const sortedTasks = [...tasks].sort((a, b) => b.id - a.id);
-    
-    // 先创建所有行并保持正确顺序
-    const rows = sortedTasks.map(task => {
-        const row = document.createElement('tr');
-        // 直接使用数据库中的时间
-        const createdAt = new Date(task.created_at);
-        const formattedDate = createdAt.toLocaleString('zh-CN', {
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit',
-            hour: '2-digit',
-            minute: '2-digit',
-            second: '2-digit',
-            hour12: false
-        });
-        
-        // 先设置基本信息，添加创建人字段
-        row.innerHTML = `
-            <td>${task.id}</td>
-            <td>${task.title}</td>
-            <td>${task.description || '无描述'}</td>
-            <td>${task.owner ? task.owner.username : '未知'}</td>
-            <td>${formattedDate}</td>
-            <td class="actions">
-                <span class="loading-permissions">加载权限中...</span>
-            </td>
-        `;
-        
-        // 给行添加数据属性，方便后续更新
-        row.dataset.taskId = task.id;
-        row.dataset.taskTitle = task.title;
-        
-        return row;
-    });
-    
-    // 先将所有行按顺序添加到表格中
-    rows.forEach(row => {
-        taskTableBody.appendChild(row);
-    });
-    
-    // 再异步加载每个任务的权限
-    sortedTasks.forEach((task, index) => {
-        const row = rows[index];
-        const token = localStorage.getItem('token');
-        
-        // 获取用户对当前任务的权限
-        fetch(apiUrl(`/tasks/${task.id}/user-permission`), {
-            method: 'GET',
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
-        })
-        .then(response => {
-            if (!response.ok) {
-                console.error(`获取任务 ${task.id} 权限失败:`, response.status);
-                return { can_view: true, can_edit: false, can_share: false, is_owner: false };
-            }
+    // 检查系统管理员权限
+    fetch(apiUrl('/users/me'), {
+        method: 'GET',
+        headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+    })
+    .then(response => {
+        if (response.ok) {
             return response.json();
-        })
-        .then(permission => {
-            console.log(`任务 ${task.id} 权限:`, permission);
-            console.log(`任务 ${task.id} 权限JSON字符串:`, JSON.stringify(permission));
-            console.log(`任务 ${task.id} permission_type:`, permission.permission_type);
-            console.log(`is_owner: ${permission.is_owner}, can_manage: ${permission.can_manage}, can_share: ${permission.can_share}`);
-            
-            // 构建按钮HTML，只包含用户有权限的按钮
-            let buttonsHtml = `<button class="btn view-btn" data-id="${task.id}">查看</button>`;
-            
-            // 只有拥有编辑权限才显示编辑按钮
-            if (permission.can_edit || permission.is_owner) {
-                buttonsHtml += ` <button class="btn edit-btn" data-id="${task.id}">编辑</button>`;
-            }
-            
-            // 任务创建者或有管理员权限的用户可以分享任务
-            if (permission.is_owner || permission.can_manage) {
-                console.log(`显示任务 ${task.id} 的分享按钮`);
-                buttonsHtml += ` <button class="btn share-btn" data-id="${task.id}" data-title="${task.title}">分享</button>`;
-                // 添加管理权限按钮
-                buttonsHtml += ` <button class="btn manage-btn manage-permissions-btn" data-id="${task.id}" data-title="${task.title}">管理权限</button>`;
-            } else {
-                console.log(`不显示任务 ${task.id} 的分享按钮，权限不足。is_owner=${permission.is_owner}, can_manage=${permission.can_manage}, can_share=${permission.can_share}`);
-            }
-            
-            // 只有任务创建者可以删除任务
-            if (permission.is_owner) {
-                buttonsHtml += ` <button class="btn delete-btn danger-btn" data-id="${task.id}" data-title="${task.title}">删除</button>`;
-            }
-            
-            // 更新行中的操作列
-            const actionsCell = row.querySelector('.actions');
-            if (actionsCell) {
-                actionsCell.innerHTML = buttonsHtml;
-                console.log(`已更新任务 ${task.id} 的操作按钮:`, buttonsHtml);
-            } else {
-                console.error(`找不到任务 ${task.id} 的操作列`);
-            }
-            
-            // 为这个任务的按钮添加事件监听器
-            addTaskButtonListenersForRow(row);
-        })
-        .catch(error => {
-            console.error(`处理任务 ${task.id} 时出错:`, error);
-            // 发生错误时仍然显示查看按钮
-            const actionsCell = row.querySelector('.actions');
-            if (actionsCell) {
-                actionsCell.innerHTML = `<button class="btn view-btn" data-id="${task.id}">查看</button>`;
-                addTaskButtonListenersForRow(row);
-            }
+        }
+        throw new Error('获取用户信息失败');
+    })
+    .then(user => {
+        isAdmin = user.is_admin;
+        console.log('用户是否为系统管理员:', isAdmin);
+        
+        // 按时间排序任务
+        const sortedTasks = [...tasks].sort((a, b) => {
+            return new Date(b.created_at) - new Date(a.created_at);
         });
+        
+        // 渲染任务列表
+        const tableBody = document.getElementById('task-table-body');
+        if (!tableBody) {
+            console.error('找不到任务列表容器');
+            return;
+        }
+        
+        tableBody.innerHTML = '';
+        
+        if (sortedTasks.length === 0) {
+            tableBody.innerHTML = '<tr><td colspan="6" class="no-data">暂无任务</td></tr>';
+            return;
+        }
+        
+        // 创建任务行
+        const rows = sortedTasks.map((task, index) => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${sortedTasks.length - index}</td>
+                <td>${task.title}</td>
+                <td>${task.description || '-'}</td>
+                <td>${task.owner.username}</td>
+                <td>${new Date(task.created_at).toLocaleString()}</td>
+                <td class="actions">
+                    <button class="btn view-btn" data-id="${task.id}">查看</button>
+                </td>
+            `;
+            tableBody.appendChild(row);
+            return row;
+        });
+        
+        // 再异步加载每个任务的权限
+        sortedTasks.forEach((task, index) => {
+            const row = rows[index];
+            const token = localStorage.getItem('token');
+            
+            // 获取用户对当前任务的权限
+            fetch(apiUrl(`/tasks/${task.id}/user-permission`), {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    console.error(`获取任务 ${task.id} 权限失败:`, response.status);
+                    return { can_view: true, can_edit: false, can_share: false, is_owner: false };
+                }
+                return response.json();
+            })
+            .then(permission => {
+                console.log(`任务 ${task.id} 权限:`, permission);
+                
+                // 构建按钮HTML，只包含用户有权限的按钮
+                let buttonsHtml = `<button class="btn view-btn" data-id="${task.id}">查看</button>`;
+                
+                // 系统管理员或拥有编辑权限的用户可以编辑任务
+                if (isAdmin || permission.can_edit || permission.is_owner) {
+                    buttonsHtml += ` <button class="btn edit-btn" data-id="${task.id}">编辑</button>`;
+                }
+                
+                // 系统管理员、任务创建者或有管理员权限的用户可以分享任务
+                if (isAdmin || permission.is_owner || permission.can_manage) {
+                    buttonsHtml += ` <button class="btn share-btn" data-id="${task.id}" data-title="${task.title}">分享</button>`;
+                    buttonsHtml += ` <button class="btn manage-btn manage-permissions-btn" data-id="${task.id}" data-title="${task.title}">管理权限</button>`;
+                }
+                
+                // 系统管理员或任务创建者可以删除任务
+                if (isAdmin || permission.is_owner) {
+                    buttonsHtml += ` <button class="btn delete-btn danger-btn" data-id="${task.id}" data-title="${task.title}">删除</button>`;
+                }
+                
+                // 更新行中的操作列
+                const actionsCell = row.querySelector('.actions');
+                if (actionsCell) {
+                    actionsCell.innerHTML = buttonsHtml;
+                }
+                
+                // 为这个任务的按钮添加事件监听器
+                addTaskButtonListenersForRow(row);
+            })
+            .catch(error => {
+                console.error(`处理任务 ${task.id} 权限时出错:`, error);
+            });
+        });
+    })
+    .catch(error => {
+        console.error('获取用户信息失败:', error);
     });
 }
 

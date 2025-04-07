@@ -39,7 +39,10 @@ async def upload_image(
         raise HTTPException(status_code=404, detail="任务不存在")
     
     # 检查用户是否有权限上传图片
-    if task.owner_id != current_user.id:
+    # 1. 系统管理员可以上传任何任务的图片
+    # 2. 任务创建者可以上传图片
+    # 3. 有上传权限的用户可以上传图片
+    if not current_user.is_admin and task.owner_id != current_user.id:
         permission = crud_task.get_user_task_permission(db=db, task_id=task_id, user_id=current_user.id)
         if not permission or not permission.can_upload:
             raise HTTPException(status_code=403, detail="没有上传权限")
@@ -168,7 +171,10 @@ def get_image(
         
         logger.info(f"检查用户权限，用户ID: {current_user.id}, 任务所有者ID: {task.owner_id}")
         # 检查用户是否有权限访问图片
-        if task.owner_id != current_user.id:
+        # 1. 系统管理员可以查看任何图片
+        # 2. 任务创建者可以查看图片
+        # 3. 有查看权限的用户可以查看图片
+        if not current_user.is_admin and task.owner_id != current_user.id:
             permission = crud_task.get_user_task_permission(db=db, task_id=image.task_id, user_id=current_user.id)
             if not permission or permission.permission_type not in ['view', 'edit', 'admin']:
                 logger.warning(f"用户没有查看权限，用户ID: {current_user.id}, 任务ID: {image.task_id}")
@@ -202,7 +208,10 @@ def update_image(
         raise HTTPException(status_code=404, detail="任务不存在")
     
     # 检查用户是否有权限编辑图片
-    if task.owner_id != current_user.id:
+    # 1. 系统管理员可以编辑任何图片
+    # 2. 任务创建者可以编辑图片
+    # 3. 有编辑权限的用户可以编辑图片
+    if not current_user.is_admin and task.owner_id != current_user.id:
         permission = crud_task.get_user_task_permission(db=db, task_id=image.task_id, user_id=current_user.id)
         if not permission or not permission.can_edit:
             raise HTTPException(status_code=403, detail="没有编辑权限")
